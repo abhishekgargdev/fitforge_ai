@@ -275,6 +275,8 @@ export interface WorkoutSplitSchedule {
   id: string;
   title: string;
   daysPerWeek: number;
+  planMode?: "ai" | "manual";
+  nextPlanGenerationDate?: string;
   days: WorkoutSplitDay[];
 }
 

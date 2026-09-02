@@ -15,6 +15,7 @@ export async function POST(
     if (!plan) return fail("Workout plan not found.", 404, "PLAN_NOT_FOUND");
     await WorkoutPlanModel.updateMany({ userId: session.user._id }, { isActive: false });
     plan.isActive = true;
+    plan.nextPlanGenerationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await plan.save();
     return ok({ plan: toSplitDto(plan) });
   } catch (error) {

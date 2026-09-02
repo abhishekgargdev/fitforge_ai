@@ -42,12 +42,15 @@ export async function generateAndSaveWorkoutPlan(
     throw new Error("AI plan did not resolve to any catalog exercises");
   }
 
+  const nextPlanGenerationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await WorkoutPlanModel.updateMany({ userId }, { isActive: false });
   const plan = await WorkoutPlanModel.create({
     userId,
     title: aiPlan.planTitle,
     daysPerWeek: input.daysPerWeek,
     isActive: true,
+    planMode: "ai",
+    nextPlanGenerationDate,
     origin: "AI_RECOMMENDATION",
     days: resolved.days,
     plannerInputs: input,

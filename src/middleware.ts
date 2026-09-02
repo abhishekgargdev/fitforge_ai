@@ -13,6 +13,7 @@ const PUBLIC_EXACT = new Set([
 function isPublicPath(pathname: string) {
   if (PUBLIC_EXACT.has(pathname)) return true;
   if (pathname.startsWith("/api/auth")) return true;
+  if (pathname.startsWith("/api/cron")) return true;
   return false;
 }
 

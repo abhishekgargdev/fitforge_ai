@@ -55,6 +55,12 @@ const workoutPlanSchema = new Schema(
       enum: ["MEASURED", "CALCULATED", "AI_RECOMMENDATION"],
       default: "AI_RECOMMENDATION",
     },
+    planMode: {
+      type: String,
+      enum: ["ai", "manual"],
+      default: "ai",
+    },
+    nextPlanGenerationDate: { type: Date, index: true },
     days: { type: [splitDaySchema], default: [] },
     plannerInputs: {
       goal: String,

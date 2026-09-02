@@ -9,6 +9,8 @@ export function toSplitDto(plan: {
   _id: { toString(): string };
   title: string;
   daysPerWeek: number;
+  planMode?: "ai" | "manual";
+  nextPlanGenerationDate?: Date;
   days: Array<{
     dayName: string;
     focus?: string;
@@ -40,6 +42,8 @@ export function toSplitDto(plan: {
     id: String(plan._id),
     title: plan.title,
     daysPerWeek: plan.daysPerWeek,
+    planMode: plan.planMode || "ai",
+    nextPlanGenerationDate: plan.nextPlanGenerationDate ? plan.nextPlanGenerationDate.toISOString() : undefined,
     days: plan.days.map((day) => ({
       dayName: day.dayName,
       day: day.dayName,
