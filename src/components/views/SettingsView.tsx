@@ -19,6 +19,7 @@ import {
   LogOut,
   Sliders,
 } from 'lucide-react';
+import { LoadingButton } from '../common/LoadingButton';
 import type { AiPersona, UserSettings } from '@/types';
 
 interface SettingsViewProps {
@@ -292,16 +293,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {onRestartOnboarding && (
-          <button
+          <LoadingButton
             type="button"
             id="btn-settings-restart-onboarding"
-            disabled={!loaded || busy}
             onClick={restartOnboarding}
-            className="px-4 py-2.5 rounded-xl bg-[#181D22] border border-[#B8F34A]/40 text-[#B8F34A] hover:bg-[#B8F34A] hover:text-[#0B0D0F] font-bold text-xs transition-all flex items-center gap-2 disabled:opacity-50"
+            isLoading={busy}
+            loadingText="Launch Onboarding Flow"
+            icon={<Sparkles className="w-3.5 h-3.5" />}
+            className="px-4 py-2.5 bg-[#181D22] border border-[#B8F34A]/40 text-[#B8F34A] hover:bg-[#B8F34A] hover:text-[#0B0D0F]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Launch Onboarding Flow</span>
-          </button>
+            Launch Onboarding Flow
+          </LoadingButton>
         )}
       </div>
 
@@ -355,14 +357,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Download className="w-3.5 h-3.5" /> Export Data
           </button>
 
-          <button
+          <LoadingButton
             type="button"
-            disabled={busy}
             onClick={deleteAccount}
-            className="px-4 py-2 rounded-xl bg-[#F05D5E]/15 border border-[#F05D5E]/30 text-xs font-bold text-[#F05D5E] hover:bg-[#F05D5E]/25 flex items-center gap-1.5 disabled:opacity-50"
+            isLoading={busy}
+            loadingText="Delete Account"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            className="px-4 py-2 !bg-[#F05D5E]/15 border border-[#F05D5E]/30 text-[#F05D5E] hover:!bg-[#F05D5E]/25"
           >
-            <Trash2 className="w-3.5 h-3.5" /> Delete Account
-          </button>
+            Delete Account
+          </LoadingButton>
         </div>
       </div>
     </div>

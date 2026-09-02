@@ -22,6 +22,7 @@ import {
   Flame,
   Info,
 } from 'lucide-react';
+import { LoadingButton } from '../common/LoadingButton';
 
 interface ActiveWorkoutTrackerProps {
   workout: WorkoutTemplate;
@@ -220,15 +221,15 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             </div>
           </div>
 
-          <button
+          <LoadingButton
             id="btn-active-finish-workout"
-            type="button"
-            disabled={isFinishing}
             onClick={handleFinish}
-            className="px-4 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs transition-all shadow-[0_0_12px_rgba(184,243,74,0.3)] disabled:opacity-50"
+            isLoading={isFinishing}
+            loadingText="Completing..."
+            className="px-4 py-2 shadow-[0_0_12px_rgba(184,243,74,0.3)]"
           >
             Finish Workout
-          </button>
+          </LoadingButton>
         </div>
       </div>
 
@@ -403,14 +404,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                 Next Exercise <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
-              <button
+              <LoadingButton
                 id="btn-final-finish-workout"
-                type="button"
                 onClick={handleFinish}
-                className="px-6 py-2.5 rounded-xl bg-[#45D483] text-[#0B0D0F] hover:bg-[#5be698] text-xs font-black flex items-center gap-1.5 shadow-[0_0_15px_rgba(69,212,131,0.4)]"
+                isLoading={isFinishing}
+                loadingText="Completing..."
+                icon={<CheckCircle2 className="w-4 h-4" />}
+                className="px-6 py-2.5 !bg-[#45D483] hover:!bg-[#5be698] shadow-[0_0_15px_rgba(69,212,131,0.4)]"
               >
-                Complete Workout <CheckCircle2 className="w-4 h-4" />
-              </button>
+                Complete Workout
+              </LoadingButton>
             )}
           </div>
         </div>

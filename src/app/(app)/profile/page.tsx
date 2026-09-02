@@ -24,7 +24,16 @@ export default function ProfilePage() {
     return <p className="text-sm text-[#F05D5E]">{error}</p>;
   }
   if (!profile) {
-    return <p className="text-sm text-[#9AA3A0]">Loading profile…</p>;
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-5 rounded-2xl bg-[#12161A] border border-[#252B30] h-28 animate-pulse" />
+          ))}
+        </div>
+        <div className="p-6 rounded-2xl bg-[#12161A] border border-[#252B30] h-64 animate-pulse" />
+      </div>
+    );
   }
 
   return (

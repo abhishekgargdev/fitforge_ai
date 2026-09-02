@@ -17,7 +17,12 @@ export default function AICoachPage() {
   }, []);
 
   if (!profile) {
-    return <div className="text-sm text-[#9AA3A0]">Loading coach…</div>;
+    return (
+      <div className="bg-[#12161A] border border-[#252B30] rounded-2xl h-[calc(100vh-140px)] p-6 space-y-4 animate-pulse">
+        <div className="h-10 bg-[#181D22] rounded-xl w-48" />
+        <div className="h-64 bg-[#181D22] rounded-2xl w-full" />
+      </div>
+    );
   }
 
   return <AICoachView userProfile={profile} />;

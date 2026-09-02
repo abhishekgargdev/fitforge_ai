@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { UserProfile, FitnessGoal, ExperienceLevel, EquipmentType } from '@/types';
 import { Sparkles, X, Check, Loader2, Dumbbell, Zap, Flame, Shield } from 'lucide-react';
+import { LoadingButton } from '@/components/common/LoadingButton';
 
 interface AIWorkoutPlannerModalProps {
   userProfile: UserProfile;
@@ -338,15 +339,16 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
             >
               Cancel
             </button>
-            <button
+            <LoadingButton
               id="btn-submit-ai-generate-workout"
-              type="button"
               onClick={handleGenerate}
-              className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_18px_rgba(184,243,74,0.35)] transition-all hover:scale-105"
+              isLoading={isGenerating}
+              loadingText="Generating Plan..."
+              icon={<Sparkles className="w-4 h-4 fill-current" />}
+              className="px-6 py-2.5 transition-all hover:scale-105"
             >
-              <Sparkles className="w-4 h-4 fill-current" />
               Generate Workout Plan
-            </button>
+            </LoadingButton>
           </div>
         )}
       </div>

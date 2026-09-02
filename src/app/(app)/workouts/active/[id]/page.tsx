@@ -60,7 +60,18 @@ export default function ActiveWorkoutPage() {
   }, [id]);
 
   if (error) return <p className="text-sm text-[#F05D5E]">{error}</p>;
-  if (!workout) return <p className="text-sm text-[#9AA3A0]">Loading session…</p>;
+  if (!workout) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="p-6 rounded-2xl bg-[#12161A] border border-[#252B30] h-32 animate-pulse" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-5 rounded-xl bg-[#12161A] border border-[#252B30] h-20 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

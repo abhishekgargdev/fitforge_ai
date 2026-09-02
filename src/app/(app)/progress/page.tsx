@@ -72,7 +72,16 @@ export default function ProgressPage() {
   }, [load]);
 
   if (!profile) {
-    return <div className="text-sm text-[#9AA3A0]">Loading progress…</div>;
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-5 rounded-2xl bg-[#12161A] border border-[#252B30] h-28 animate-pulse" />
+          ))}
+        </div>
+        <div className="p-6 rounded-2xl bg-[#12161A] border border-[#252B30] h-80 animate-pulse" />
+      </div>
+    );
   }
 
   return (

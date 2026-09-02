@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { FoodItem, MealCategory, LoggedMealEntry } from '@/types';
 import { Search, Plus, X, Flame } from 'lucide-react';
+import { LoadingButton } from '@/components/common/LoadingButton';
 
 interface FoodLoggerModalProps {
   onClose: () => void;
@@ -332,16 +333,18 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               >
                 Cancel
               </button>
-              <button
+              <LoadingButton
                 id="btn-confirm-log-food"
                 type="button"
-                disabled={!selectedFood || saving}
+                disabled={!selectedFood}
+                isLoading={saving}
+                loadingText="Saving…"
                 onClick={handleLogSelected}
-                className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                icon={<Plus className="w-4 h-4" />}
+                className="px-6"
               >
-                <Plus className="w-4 h-4" />
-                {saving ? 'Saving…' : `Add to ${selectedMeal}`}
-              </button>
+                Add to {selectedMeal}
+              </LoadingButton>
             </div>
           </div>
         ) : (
@@ -437,13 +440,14 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               >
                 Cancel
               </button>
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={saving}
-                className="px-6 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs disabled:opacity-50"
+                isLoading={saving}
+                loadingText="Saving…"
+                className="px-6"
               >
-                {saving ? 'Saving…' : 'Save & Log'}
-              </button>
+                Save & Log
+              </LoadingButton>
             </div>
           </form>
         )}

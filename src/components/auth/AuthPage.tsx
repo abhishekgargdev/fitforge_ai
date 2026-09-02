@@ -15,6 +15,7 @@ import {
   EyeOff,
   ChevronLeft,
 } from 'lucide-react';
+import { LoadingButton } from '../common/LoadingButton';
 import { BrandLogo } from '../common/BrandLogo';
 
 interface AuthPageProps {
@@ -331,26 +332,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </div>
 
             {/* Submit Button */}
-            <button
+            <LoadingButton
               id="btn-auth-submit"
               type="submit"
-              disabled={isLoading}
-              className="w-full mt-3 py-3.5 rounded-2xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs uppercase tracking-wider shadow-[0_2px_14px_rgba(184,243,74,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              isLoading={isLoading}
+              loadingText="Authenticating..."
+              icon={<ArrowRight className="w-4 h-4" />}
+              className="w-full mt-3 py-3.5 uppercase tracking-wider shadow-[0_2px_14px_rgba(184,243,74,0.3)] flex-row-reverse"
             >
-              {isLoading ? (
-                <span>Authenticating...</span>
-              ) : authMode === 'login' ? (
-                <>
-                  <span>Sign In To Dashboard</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              ) : (
-                <>
-                  <span>Create Account & Setup Bio-Metrics</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              {authMode === 'login' ? 'Sign In To Dashboard' : 'Create Account & Setup Bio-Metrics'}
+            </LoadingButton>
           </form>
 
           {/* Social login divider */}

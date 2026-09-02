@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react';
+import { LoadingButton } from '../common/LoadingButton';
 import { BrandLogo } from '../common/BrandLogo';
 import {
   activityFactorFromTrainingDays,
@@ -762,16 +763,17 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <button
-                type="button"
+              <LoadingButton
                 id="btn-onboarding-launch-app"
-                disabled={isCalibrating || isSubmitting}
                 onClick={handleFinalLaunch}
-                className="px-8 py-3.5 rounded-2xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs uppercase tracking-wider shadow-[0_4px_20px_rgba(184,243,74,0.4)] transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105"
+                isLoading={isSubmitting}
+                disabled={isCalibrating}
+                loadingText="Saving profile..."
+                icon={<Sparkles className="w-4 h-4" />}
+                className="px-8 py-3.5 uppercase tracking-wider shadow-[0_4px_20px_rgba(184,243,74,0.4)] hover:scale-105"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>{isSubmitting ? 'Saving profile...' : 'Launch My FitForge Dashboard'}</span>
-              </button>
+                Launch My FitForge Dashboard
+              </LoadingButton>
             )}
           </div>
         </div>

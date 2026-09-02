@@ -19,6 +19,7 @@ import {
   Flame,
   Target,
 } from 'lucide-react';
+import { LoadingButton } from '../common/LoadingButton';
 
 interface ProfileViewProps {
   userProfile: UserProfile;
@@ -191,15 +192,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <div className="pt-4 border-t border-[#252B30] flex justify-end">
-          <button
+          <LoadingButton
             id="btn-save-profile"
             type="submit"
-            disabled={isSaving}
-            className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all disabled:opacity-50"
+            isLoading={isSaving}
+            loadingText="Saving..."
+            icon={<Save className="w-4 h-4" />}
+            className="px-6 py-2.5 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all"
           >
-            <Save className="w-4 h-4" />
             Save Biometric Updates
-          </button>
+          </LoadingButton>
         </div>
       </form>
 

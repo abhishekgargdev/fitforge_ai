@@ -28,14 +28,28 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
   onClose,
   range = '3m',
 }) => {
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const stepsList = [
+    "Analyzing biometric trajectory & body composition...",
+    "Evaluating muscle mass vs body fat delta...",
+    "Calculating periodization & recomp efficiency score...",
+    "Formulating 4-week strategic directives...",
+  ];
 
   useEffect(() => {
+    let stepInterval: NodeJS.Timeout;
     const fetchAnalysis = async () => {
       setLoading(true);
       setErrorMsg('');
+      setStepIndex(0);
+      stepInterval = setInterval(() => {
+        setStepIndex((prev) => (prev < stepsList.length - 1 ? prev + 1 : prev));
+      }, 650);
+
       try {
         const res = await fetch('/api/ai/progress-analysis', {
           method: 'POST',
@@ -49,11 +63,13 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
         setErrorMsg(e instanceof Error ? e.message : 'Unable to generate analysis.');
         setAnalysis(null);
       } finally {
+        clearInterval(stepInterval);
         setLoading(false);
       }
     };
 
     void fetchAnalysis();
+    return () => clearInterval(stepInterval);
   }, [range]);
 
   return (
@@ -87,9 +103,15 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
         {loading ? (
           <div className="py-16 text-center flex flex-col items-center justify-center space-y-4">
             <Loader2 className="w-10 h-10 text-[#B8F34A] animate-spin" />
-            <p className="text-sm font-semibold text-[#F5F7F2]">
-              Synthesizing biometric trajectory from calculated trends...
+            <p className="text-sm font-semibold text-[#B8F34A] transition-all">
+              {stepsList[stepIndex]}
             </p>
+            <div className="w-48 bg-[#0B0D0F] h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-[#B8F34A] h-full rounded-full transition-all duration-500"
+                style={{ width: `${((stepIndex + 1) / stepsList.length) * 100}%` }}
+              />
+            </div>
           </div>
         ) : errorMsg || !analysis ? (
           <div className="py-12 text-center text-sm text-[#F05D5E]">{errorMsg || 'No analysis available.'}</div>

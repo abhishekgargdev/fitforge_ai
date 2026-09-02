@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile, DietType } from '@/types';
 import { Sparkles, X, Check, Utensils, ShoppingBag } from 'lucide-react';
+import { LoadingButton } from '@/components/common/LoadingButton';
 
 type NutritionPlanResult = {
   planTitle: string;
@@ -49,6 +50,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
   const [budget, setBudget] = useState<'low' | 'medium' | 'high'>('medium');
   const [cuisine, setCuisine] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedResult, setGeneratedResult] = useState<NutritionPlanResult | null>(null);
 
@@ -72,6 +74,15 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
       .catch(() => undefined);
   }, []);
 
+  const [generationStep, setGenerationStep] = useState(0);
+
+  const stepsList = [
+    "Analyzing metabolic profile & BMR/TDEE targets...",
+    "Structuring optimal macronutrient breakdown...",
+    "Selecting validated foods from catalog...",
+    "Finalizing personalized meal architecture...",
+  ];
+
   const dietOptions: { id: DietType; label: string; desc: string }[] = [
     { id: 'balanced', label: 'Balanced Athletic', desc: 'Standard 40/30/30 macro split' },
     { id: 'high_protein', label: 'High Protein Hypertrophy', desc: '2.0g+ per kg bodyweight' },
@@ -85,6 +96,12 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
   const handleGenerate = async () => {
     setIsGenerating(true);
     setErrorMsg('');
+    setGenerationStep(0);
+
+    const stepInterval = setInterval(() => {
+      setGenerationStep((prev) => (prev < stepsList.length - 1 ? prev + 1 : prev));
+    }, 650);
+
     try {
       const res = await fetch('/api/ai/nutrition-plan', {
         method: 'POST',
@@ -110,8 +127,10 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || 'Nutrition plan unavailable');
+      clearInterval(stepInterval);
       setGeneratedResult(json.data);
     } catch (e) {
+      clearInterval(stepInterval);
       setErrorMsg(e instanceof Error ? e.message : 'Unable to generate a nutrition plan.');
     } finally {
       setIsGenerating(false);
@@ -120,6 +139,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
 
   const handleApply = async () => {
     if (!generatedResult) return;
+    setIsApplying(true);
     setErrorMsg('');
     try {
       const res = await fetch('/api/nutrition-goals', {
@@ -145,6 +165,8 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
       onClose();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Unable to apply nutrition plan.');
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -174,7 +196,26 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
           </button>
         </div>
 
-        {!generatedResult ? (
+        {isGenerating ? (
+          <div className="py-14 text-center flex flex-col items-center justify-center space-y-6">
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-[#B8F34A]/20 border-t-[#B8F34A] animate-spin" />
+              <Utensils className="w-8 h-8 text-[#B8F34A] animate-pulse" />
+            </div>
+            <div className="max-w-md w-full px-4">
+              <h3 className="text-lg font-bold text-white mb-2">Synthesizing Meal Architecture</h3>
+              <p className="text-xs text-[#B8F34A] font-semibold min-h-[20px] transition-all">
+                {stepsList[generationStep]}
+              </p>
+              <div className="w-full bg-[#0B0D0F] h-2 rounded-full mt-4 overflow-hidden">
+                <div
+                  className="bg-[#B8F34A] h-full rounded-full transition-all duration-500"
+                  style={{ width: `${((generationStep + 1) / stepsList.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : !generatedResult ? (
           <div className="mt-5 space-y-5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
@@ -427,14 +468,15 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               >
                 Reconfigure
               </button>
-              <button
+              <LoadingButton
                 id="btn-apply-ai-nutrition"
-                type="button"
                 onClick={() => void handleApply()}
-                className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs shadow-sm"
+                isLoading={isApplying}
+                loadingText="Applying Plan..."
+                className="px-6 py-2.5 shadow-sm"
               >
                 Apply Nutrition Plan
-              </button>
+              </LoadingButton>
             </>
           ) : (
             <>
@@ -445,16 +487,16 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               >
                 Cancel
               </button>
-              <button
+              <LoadingButton
                 id="btn-generate-ai-nutrition"
-                type="button"
-                disabled={isGenerating}
                 onClick={() => void handleGenerate()}
-                className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] disabled:opacity-50"
+                isLoading={isGenerating}
+                loadingText="Synthesizing..."
+                icon={<Sparkles className="w-4 h-4 fill-current" />}
+                className="px-6 py-2.5 shadow-[0_0_15px_rgba(184,243,74,0.3)]"
               >
-                <Sparkles className="w-4 h-4 fill-current" />
-                {isGenerating ? 'Synthesizing...' : 'Generate Plan'}
-              </button>
+                Generate Plan
+              </LoadingButton>
             </>
           )}
         </div>
