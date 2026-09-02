@@ -1,69 +1,60 @@
 'use client';
 
-// Fields used: userProfile (full object posted to AI); MetricEntry[]; BodyCompositionDetails; fallback analysis copy (executiveSummary, recompScore, strengths, areasToOptimize, upcomingPhaseRecommendation).
+// Fields used: POST /api/ai/progress-analysis with range only. Output: executiveSummary,
+// recompScore (calculated), recompositionStatus, strengths[], areasToOptimize[], upcomingPhaseRecommendation.
 
 import React, { useState, useEffect } from 'react';
 import { UserProfile, MetricEntry, BodyCompositionDetails } from '@/types';
-import { Sparkles, X, TrendingUp, Shield, Activity, Zap, CheckCircle2, Loader2 } from 'lucide-react';
+import { Sparkles, X, Shield, Activity, Zap, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface AIAnalysisModalProps {
-  userProfile: UserProfile;
-  metrics: MetricEntry[];
-  composition: BodyCompositionDetails;
+  userProfile?: UserProfile;
+  metrics?: MetricEntry[];
+  composition?: BodyCompositionDetails;
   onClose: () => void;
+  range?: '1m' | '3m' | '6m' | '1y' | 'all';
 }
 
+type AnalysisResult = {
+  executiveSummary: string;
+  recompScore: string;
+  recompositionStatus: string;
+  strengths: string[];
+  areasToOptimize: string[];
+  upcomingPhaseRecommendation: string;
+};
+
 export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
-  userProfile,
-  metrics,
-  composition,
   onClose,
+  range = '3m',
 }) => {
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     const fetchAnalysis = async () => {
       setLoading(true);
+      setErrorMsg('');
       try {
         const res = await fetch('/api/ai/progress-analysis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userProfile,
-            metrics,
-            composition,
-          }),
+          body: JSON.stringify({ range }),
         });
-        if (!res.ok) throw new Error("analysis unavailable");
-        const data = await res.json();
-        setAnalysis(data);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message || 'Analysis unavailable');
+        setAnalysis(json.data);
       } catch (e) {
-        // Fallback robust analysis
-        setAnalysis({
-          executiveSummary:
-            'Outstanding body recomposition demonstrated over the last 90-day block. Scale weight drop (-2.8 kg) was accompanied by a +1.0 kg gain in pure lean skeletal muscle mass and a significant 2.7% reduction in subcutaneous body fat.',
-          recompScore: '94 / 100',
-          recompositionStatus: 'Optimal Hypertrophy & Fat Loss',
-          strengths: [
-            'Exceptional upper body muscle density retention during caloric deficit',
-            'Progressive overload consistency: 6.2% volume increase over 4 weeks',
-            'Solid hydration and low visceral fat level (Rating 4)',
-          ],
-          areasToOptimize: [
-            'Consider adding 1 dedicated hamstring isolation exercise to balance quad-dominant squatting volume',
-            'Maintain strict 160g protein on rest days to prevent catabolic signaling',
-          ],
-          upcomingPhaseRecommendation:
-            'Transition into a 4-week Lean Mass Consolidation cycle. Increase daily calories by +150 kcal (clean complex carbohydrates around workout windows) while sustaining current intensity.',
-        });
+        setErrorMsg(e instanceof Error ? e.message : 'Unable to generate analysis.');
+        setAnalysis(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnalysis();
-  }, [userProfile, metrics, composition]);
+    void fetchAnalysis();
+  }, [range]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
@@ -82,7 +73,7 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
               </h2>
             </div>
             <p className="text-xs text-[#9AA3A0] mt-1">
-              Multi-factor diagnostic evaluation combining biometric progression and volume load
+              Built from calculated metric trends, not raw scan dumps
             </p>
           </div>
           <button
@@ -97,12 +88,13 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
           <div className="py-16 text-center flex flex-col items-center justify-center space-y-4">
             <Loader2 className="w-10 h-10 text-[#B8F34A] animate-spin" />
             <p className="text-sm font-semibold text-[#F5F7F2]">
-              Synthesizing 90-day biometric trajectory & volume curve...
+              Synthesizing biometric trajectory from calculated trends...
             </p>
           </div>
+        ) : errorMsg || !analysis ? (
+          <div className="py-12 text-center text-sm text-[#F05D5E]">{errorMsg || 'No analysis available.'}</div>
         ) : (
           <div className="mt-5 space-y-5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
-            {/* Recomp Score Banner */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-[#181D22] via-[#1A221E] to-[#181D22] border border-[#B8F34A]/40 flex items-center justify-between">
               <div>
                 <span className="text-xs uppercase font-bold text-[#9AA3A0] block">
@@ -117,7 +109,6 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
               </div>
             </div>
 
-            {/* Executive Summary */}
             <div className="p-4 rounded-xl bg-[#0B0D0F]/70 border border-[#252B30]">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-[#5DA9FF]" />
@@ -128,14 +119,13 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
               </p>
             </div>
 
-            {/* Key Strengths */}
             <div className="bg-[#181D22] p-4 rounded-xl border border-[#252B30]">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#45D483] mb-2 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Validated Progress Factors
               </h4>
               <div className="space-y-1.5">
-                {analysis.strengths?.map((item: string, idx: number) => (
+                {analysis.strengths?.map((item, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-[#F5F7F2]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#45D483] shrink-0 mt-1.5" />
                     <span>{item}</span>
@@ -144,14 +134,13 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
               </div>
             </div>
 
-            {/* Areas to Optimize */}
             <div className="bg-[#181D22] p-4 rounded-xl border border-[#252B30]">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#F5B942] mb-2 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
                 Optimization Opportunities
               </h4>
               <div className="space-y-1.5">
-                {analysis.areasToOptimize?.map((item: string, idx: number) => (
+                {analysis.areasToOptimize?.map((item, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-[#F5F7F2]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#F5B942] shrink-0 mt-1.5" />
                     <span>{item}</span>
@@ -160,7 +149,6 @@ export const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
               </div>
             </div>
 
-            {/* Next 4-Week Recommendation */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/30">
               <h4 className="text-xs font-bold text-[#B8F34A] mb-1.5 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />

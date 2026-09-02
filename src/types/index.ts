@@ -116,9 +116,28 @@ export interface BodyMeasurementRecord {
   id: string;
   userId: string;
   date: string;
+  month: string;
   weightKg: number;
   bodyFatPercentage: number;
+  muscleMassKg: number;
   bmi: number;
+  visceralFat: number;
+  bodyAge: number;
+  restingMetabolismKcal: number;
+  trunkFatPercentage: number;
+  trunkMusclePercentage: number;
+  armsFatPercentage: number;
+  armsMusclePercentage: number;
+  legsFatPercentage: number;
+  legsMusclePercentage: number;
+  chestCm: number;
+  waistCm: number;
+  hipsCm: number;
+  bicepsCm: number;
+  thighsCm: number;
+  calvesCm: number;
+  shouldersCm: number;
+  neckCm: number;
   origin: DataOrigin;
 }
 

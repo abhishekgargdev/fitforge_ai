@@ -4,6 +4,7 @@ import { fail, ok } from "@/lib/api/response";
 import { onboardingSchema } from "@/lib/validation/auth";
 import { createSessionCookie, readSessionToken } from "@/lib/auth/session";
 import { bmi } from "@/lib/calculations";
+import { computedScanFields, monthLabel } from "@/lib/progress/map";
 import { BodyMeasurement } from "@/models/BodyMeasurement";
 import { FitnessGoalModel } from "@/models/FitnessGoal";
 import { Profile } from "@/models/Profile";
@@ -74,18 +75,31 @@ export async function POST(request: Request) {
         writeOpts
       );
 
-      await BodyMeasurement.findOneAndUpdate(
-        { userId },
-        {
-          userId,
-          date: new Date(),
-          weightKg: body.weightKg,
-          bodyFatPercentage: body.bodyFatPercentage,
-          bmi: calculatedBmi,
-          origin: "MEASURED",
-        },
-        writeOpts
-      );
+      const scanDate = new Date();
+      const scan = computedScanFields({
+        weightKg: body.weightKg,
+        heightCm: body.heightCm,
+        age: body.age,
+        gender: body.gender,
+        bodyFatPercentage: body.bodyFatPercentage,
+      });
+      const measurementPayload = {
+        userId,
+        date: scanDate,
+        month: monthLabel(scanDate),
+        weightKg: body.weightKg,
+        bodyFatPercentage: body.bodyFatPercentage,
+        muscleMassKg: scan.muscleMassKg,
+        bmi: calculatedBmi,
+        bodyAge: scan.bodyAge,
+        restingMetabolismKcal: scan.restingMetabolismKcal,
+        origin: "MEASURED" as const,
+      };
+      if (session) {
+        await BodyMeasurement.create([measurementPayload], { session });
+      } else {
+        await BodyMeasurement.create(measurementPayload);
+      }
 
       await User.findByIdAndUpdate(
         userId,

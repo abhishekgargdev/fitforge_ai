@@ -81,10 +81,57 @@ export function workoutVolume(
   return sets.reduce((sum, set) => sum + set.weightKg * set.reps, 0);
 }
 
-/** Percent change vs previous value (0 when there is no previous session). */
+/** Percent change vs previous value (0 when there is no usable previous). */
 export function progressDelta(current: number, previous: number): number {
-  if (!previous) return 0;
+  if (previous === 0 || !Number.isFinite(previous) || !Number.isFinite(current)) return 0;
   return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
+}
+
+export function absoluteDelta(current: number, previous: number | undefined | null): number {
+  if (previous == null || !Number.isFinite(previous) || !Number.isFinite(current)) return 0;
+  return Math.round((current - previous) * 10) / 10;
+}
+
+export type TrendDirection = "up" | "down" | "stable";
+
+export function progressTrend(
+  current: number,
+  previous: number | undefined | null,
+  epsilon = 0.15
+): TrendDirection {
+  if (previous == null || !Number.isFinite(previous) || !Number.isFinite(current)) {
+    return "stable";
+  }
+  const delta = current - previous;
+  if (Math.abs(delta) <= epsilon) return "stable";
+  return delta > 0 ? "up" : "down";
+}
+
+export type ChartPoint = { date: string; label: string; value: number };
+
+export function chartSeries(points: ChartPoint[]): Array<ChartPoint & { deltaPercent: number }> {
+  return points.map((point, index) => ({
+    ...point,
+    deltaPercent: index === 0 ? 0 : progressDelta(point.value, points[index - 1]?.value || 0),
+  }));
+}
+
+export function recompositionScore(input: {
+  fatDelta: number;
+  muscleDelta: number;
+  waistDelta: number;
+  visceralDelta: number;
+}): number {
+  let score = 70;
+  if (input.fatDelta < 0) score += Math.min(12, Math.round(Math.abs(input.fatDelta) * 4));
+  else score -= Math.min(12, Math.round(input.fatDelta * 4));
+  if (input.muscleDelta > 0) score += Math.min(10, Math.round(input.muscleDelta * 6));
+  else score -= Math.min(8, Math.round(Math.abs(input.muscleDelta) * 4));
+  if (input.waistDelta < 0) score += 5;
+  else if (input.waistDelta > 0.8) score -= 5;
+  if (input.visceralDelta < 0) score += 5;
+  else if (input.visceralDelta > 0) score -= 5;
+  return Math.max(1, Math.min(100, score));
 }
 
 export function estimatedWorkoutCalories(

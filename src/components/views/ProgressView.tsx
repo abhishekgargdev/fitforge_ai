@@ -3,131 +3,195 @@
 // Fields used: MetricEntry.date, weightKg, bodyFatPercentage, muscleMassKg, bmi, visceralFat, bodyAge, restingMetabolismKcal;
 // MonthlyMeasurement.id, month, date, chestCm, waistCm, hipsCm, bicepsCm, thighsCm, calvesCm, shouldersCm, neckCm;
 // BodyCompositionDetails.date, overall.{weightKg,bmi,bodyFatPercentage,visceralFat,bodyAge,restingMetabolismKcal},
-// trunk/arms/legs.{fatPercentage,musclePercentage}; userProfile (passed to analysis).
+// trunk/arms/legs.{fatPercentage,musclePercentage}; userProfile (age for silhouette). Chart tabs + 1m|3m|6m|1y|all.
 
-import React, { useState } from 'react';
-import { MetricEntry, MonthlyMeasurement, BodyCompositionDetails, UserProfile } from '@/types';
+import React, { useEffect, useState } from 'react';
+import {
+  BodyCompositionDetails,
+  MonthlyMeasurement,
+  UserProfile,
+} from '@/types';
 import { OriginBadge } from '../common/OriginBadge';
 import { BodySilhouetteVisualizer } from '../common/BodySilhouetteVisualizer';
 import {
-  TrendingUp,
-  TrendingDown,
   Sparkles,
   Plus,
-  Calendar,
   Ruler,
   Scale,
   Percent,
   Calculator,
   HeartPulse,
   Activity,
-  ArrowRight,
 } from 'lucide-react';
+import type { ProgressMetric, ProgressRange } from '@/lib/progress/types';
 
 interface ProgressViewProps {
   userProfile: UserProfile;
-  metrics: MetricEntry[];
   measurements: MonthlyMeasurement[];
   composition: BodyCompositionDetails;
+  previousComposition?: BodyCompositionDetails | null;
+  waistDeltaCm?: number;
   onOpenAIAnalysis: () => void;
-  onAddMeasurement: (m: MonthlyMeasurement) => void;
+  onMeasurementSaved: () => void;
 }
+
+const metricTabs: Array<{ id: ProgressMetric; label: string; icon: typeof Scale }> = [
+  { id: 'weight', label: 'Weight', icon: Scale },
+  { id: 'fat', label: 'Body Fat %', icon: Percent },
+  { id: 'muscle', label: 'Muscle Mass', icon: Activity },
+  { id: 'bmi', label: 'BMI', icon: Calculator },
+  { id: 'bodyAge', label: 'Body Age', icon: HeartPulse },
+  { id: 'visceralFat', label: 'Visceral Fat', icon: Activity },
+  { id: 'restingMetabolism', label: 'BMR', icon: HeartPulse },
+];
+
+const ranges: Array<{ id: ProgressRange; label: string }> = [
+  { id: '1m', label: '1M' },
+  { id: '3m', label: '3M' },
+  { id: '6m', label: '6M' },
+  { id: '1y', label: '1Y' },
+  { id: 'all', label: 'All' },
+];
 
 export const ProgressView: React.FC<ProgressViewProps> = ({
   userProfile,
-  metrics,
   measurements,
   composition,
+  previousComposition,
+  waistDeltaCm,
   onOpenAIAnalysis,
-  onAddMeasurement,
+  onMeasurementSaved,
 }) => {
-  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'fat' | 'muscle' | 'bmi' | 'bodyAge' | 'visceralFat'>('weight');
+  const [selectedMetric, setSelectedMetric] = useState<ProgressMetric>('weight');
+  const [range, setRange] = useState<ProgressRange>('3m');
+  const [series, setSeries] = useState<Array<{ date: string; label: string; value: number }>>([]);
+  const [unit, setUnit] = useState('kg');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // New measurement form state
-  const [newMonth, setNewMonth] = useState('October 2026');
-  const [newChest, setNewChest] = useState('105');
-  const [newWaist, setNewWaist] = useState('81.5');
-  const [newHips, setNewHips] = useState('98');
-  const [newBiceps, setNewBiceps] = useState('38.2');
-  const [newThighs, setNewThighs] = useState('59.5');
-  const [newCalves, setNewCalves] = useState('38');
-  const [newShoulders, setNewShoulders] = useState('122');
-  const [newNeck, setNewNeck] = useState('39.5');
-
-  const latestMeasure = measurements[0] || measurements[measurements.length - 1];
+  const latestMeasure = measurements[0];
   const previousMeasure = measurements[1] || measurements[0];
 
-  const handleSaveNewMeasurement = (e: React.FormEvent) => {
+  const [form, setForm] = useState({
+    month: '',
+    weightKg: String(composition.overall.weightKg || userProfile.weightKg),
+    bodyFatPercentage: String(composition.overall.bodyFatPercentage || userProfile.bodyFatPercentage),
+    muscleMassKg: '',
+    visceralFat: String(composition.overall.visceralFat || ''),
+    bodyAge: String(composition.overall.bodyAge || userProfile.age),
+    trunkFat: String(composition.trunk.fatPercentage || ''),
+    trunkMuscle: String(composition.trunk.musclePercentage || ''),
+    armsFat: String(composition.arms.fatPercentage || ''),
+    armsMuscle: String(composition.arms.musclePercentage || ''),
+    legsFat: String(composition.legs.fatPercentage || ''),
+    legsMuscle: String(composition.legs.musclePercentage || ''),
+    chestCm: String(latestMeasure?.chestCm ?? ''),
+    waistCm: String(latestMeasure?.waistCm ?? ''),
+    hipsCm: String(latestMeasure?.hipsCm ?? ''),
+    bicepsCm: String(latestMeasure?.bicepsCm ?? ''),
+    thighsCm: String(latestMeasure?.thighsCm ?? ''),
+    calvesCm: String(latestMeasure?.calvesCm ?? ''),
+    shouldersCm: String(latestMeasure?.shouldersCm ?? ''),
+    neckCm: String(latestMeasure?.neckCm ?? ''),
+  });
+
+  useEffect(() => {
+    fetch(`/api/progress?metric=${selectedMetric}&range=${range}`)
+      .then((res) => res.json())
+      .then((json) => {
+        setSeries(
+          (json.data?.series || []).map(
+            (point: { date: string; label: string; value: number }) => ({
+              date: point.date,
+              label: point.label,
+              value: point.value,
+            })
+          )
+        );
+        if (json.data?.unit != null) setUnit(json.data.unit);
+      })
+      .catch(() => setSeries([]));
+  }, [selectedMetric, range, measurements.length]);
+
+  const handleSaveNewMeasurement = async (e: React.FormEvent) => {
     e.preventDefault();
-    const entry: MonthlyMeasurement = {
-      id: `measure-${Date.now()}`,
-      month: newMonth,
-      date: new Date().toISOString().split('T')[0],
-      chestCm: Number(newChest),
-      waistCm: Number(newWaist),
-      hipsCm: Number(newHips),
-      bicepsCm: Number(newBiceps),
-      thighsCm: Number(newThighs),
-      calvesCm: Number(newCalves),
-      shouldersCm: Number(newShoulders),
-      neckCm: Number(newNeck),
-    };
-    onAddMeasurement(entry);
-    setShowAddModal(false);
+    setSaving(true);
+    setErrorMsg('');
+    try {
+      const num = (value: string) => (value === '' ? undefined : Number(value));
+      const res = await fetch('/api/measurements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: form.month || undefined,
+          weightKg: num(form.weightKg),
+          bodyFatPercentage: num(form.bodyFatPercentage),
+          muscleMassKg: num(form.muscleMassKg),
+          visceralFat: num(form.visceralFat),
+          bodyAge: num(form.bodyAge),
+          trunkFatPercentage: num(form.trunkFat),
+          trunkMusclePercentage: num(form.trunkMuscle),
+          armsFatPercentage: num(form.armsFat),
+          armsMusclePercentage: num(form.armsMuscle),
+          legsFatPercentage: num(form.legsFat),
+          legsMusclePercentage: num(form.legsMuscle),
+          chestCm: num(form.chestCm),
+          waistCm: num(form.waistCm),
+          hipsCm: num(form.hipsCm),
+          bicepsCm: num(form.bicepsCm),
+          thighsCm: num(form.thighsCm),
+          calvesCm: num(form.calvesCm),
+          shouldersCm: num(form.shouldersCm),
+          neckCm: num(form.neckCm),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Unable to save measurement.');
+      setShowAddModal(false);
+      onMeasurementSaved();
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Unable to save measurement.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const getMetricData = () => {
-    return metrics.map((m) => {
-      let val = m.weightKg;
-      let unit = 'kg';
-      if (selectedMetric === 'fat') {
-        val = m.bodyFatPercentage;
-        unit = '%';
-      } else if (selectedMetric === 'muscle') {
-        val = m.muscleMassKg;
-        unit = 'kg';
-      } else if (selectedMetric === 'bmi') {
-        val = m.bmi;
-        unit = '';
-      } else if (selectedMetric === 'bodyAge') {
-        val = m.bodyAge ?? 0;
-        unit = 'yrs';
-      } else if (selectedMetric === 'visceralFat') {
-        val = m.visceralFat ?? 0;
-        unit = 'lvl';
-      }
-      return { date: m.date, val, unit };
-    });
-  };
-
-  const metricPoints = getMetricData();
+  const metricPoints = series.map((point) => ({
+    date: point.label,
+    val: point.value,
+    unit,
+  }));
   const values = metricPoints.map((p) => p.val);
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
-  const range = maxVal - minVal || 1;
+  const minVal = values.length ? Math.min(...values) : 0;
+  const maxVal = values.length ? Math.max(...values) : 1;
+  const valueRange = maxVal - minVal || 1;
 
   const svgWidth = 640;
   const svgHeight = 200;
   const padding = 25;
+  const divisor = Math.max(metricPoints.length - 1, 1);
 
   const pointsString =
     metricPoints.length > 0
       ? metricPoints
           .map((p, idx) => {
-            const divisor = Math.max(metricPoints.length - 1, 1);
             const x = padding + (idx / divisor) * (svgWidth - padding * 2);
-            const y = svgHeight - padding - ((p.val - minVal) / range) * (svgHeight - padding * 2);
+            const y =
+              svgHeight - padding - ((p.val - minVal) / valueRange) * (svgHeight - padding * 2);
             return `${x},${y}`;
           })
           .join(' ')
       : `${padding},${svgHeight - padding}`;
 
   const areaPath = `M ${padding},${svgHeight - padding} L ${pointsString.replace(/,/g, ' ')} L ${svgWidth - padding},${svgHeight - padding} Z`;
+  const waistText =
+    waistDeltaCm == null
+      ? 'Waist: log two scans to compare'
+      : `Waist: ${waistDeltaCm > 0 ? '+' : ''}${waistDeltaCm} cm`;
 
   return (
     <div id="progress-view" className="space-y-6 animate-in fade-in">
-      {/* Header Banner & Deep AI Trigger */}
       <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -137,7 +201,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             <OriginBadge origin="MEASURED" />
           </div>
           <p className="text-xs text-[#9AA3A0] mt-1">
-            Segmental scans, circumferential measurements, and clinical recomposition metrics
+            Segmental scans, circumferential measurements, and calculated recomposition metrics
           </p>
         </div>
 
@@ -163,7 +227,6 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         </div>
       </div>
 
-      {/* Metric Selector Tabs */}
       <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -174,14 +237,21 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { id: 'weight', label: 'Weight', icon: Scale },
-              { id: 'fat', label: 'Body Fat %', icon: Percent },
-              { id: 'muscle', label: 'Muscle Mass', icon: Activity },
-              { id: 'bmi', label: 'BMI', icon: Calculator },
-              { id: 'bodyAge', label: 'Body Age', icon: HeartPulse },
-              { id: 'visceralFat', label: 'Visceral Fat', icon: Activity },
-            ].map((tab) => {
+            {ranges.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setRange(tab.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                  range === tab.id
+                    ? 'bg-[#5DA9FF] text-[#0B0D0F]'
+                    : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+            {metricTabs.map((tab) => {
               const Icon = tab.icon;
               const isSelected = selectedMetric === tab.id;
               return (
@@ -189,7 +259,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                   key={tab.id}
                   id={`tab-select-metric-${tab.id}`}
                   type="button"
-                  onClick={() => setSelectedMetric(tab.id as any)}
+                  onClick={() => setSelectedMetric(tab.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                     isSelected
                       ? 'bg-[#B8F34A] text-[#0B0D0F] font-bold shadow-sm'
@@ -204,81 +274,82 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </div>
         </div>
 
-        {/* SVG Line Chart */}
         <div className="relative w-full h-56 sm:h-64 bg-[#0B0D0F]/70 border border-[#252B30]/60 rounded-xl p-3 flex items-center justify-center">
-          <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
-            <defs>
-              <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#B8F34A" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#B8F34A" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
+          {metricPoints.length === 0 ? (
+            <p className="text-xs text-[#9AA3A0]">Log a scan to plot this metric.</p>
+          ) : (
+            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#B8F34A" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#B8F34A" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
 
-            {/* Grid horizontal lines */}
-            {[0.25, 0.5, 0.75].map((ratio, i) => (
-              <line
-                key={i}
-                x1={padding}
-                y1={svgHeight * ratio}
-                x2={svgWidth - padding}
-                y2={svgHeight * ratio}
-                stroke="#252B30"
-                strokeDasharray="4,4"
+              {[0.25, 0.5, 0.75].map((ratio, i) => (
+                <line
+                  key={i}
+                  x1={padding}
+                  y1={svgHeight * ratio}
+                  x2={svgWidth - padding}
+                  y2={svgHeight * ratio}
+                  stroke="#252B30"
+                  strokeDasharray="4,4"
+                />
+              ))}
+
+              <path d={areaPath} fill="url(#progressGradient)" />
+              <polyline
+                fill="none"
+                stroke="#B8F34A"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={pointsString}
               />
-            ))}
 
-            {/* Area */}
-            <path d={areaPath} fill="url(#progressGradient)" />
-
-            {/* Line */}
-            <polyline
-              fill="none"
-              stroke="#B8F34A"
-              strokeWidth="3.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={pointsString}
-            />
-
-            {/* Points */}
-            {metricPoints.map((p, idx) => {
-              const x = padding + (idx / (metricPoints.length - 1)) * (svgWidth - padding * 2);
-              const y = svgHeight - padding - ((p.val - minVal) / range) * (svgHeight - padding * 2);
-              return (
-                <g key={idx} className="group cursor-pointer">
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r="5"
-                    className="fill-[#0B0D0F] stroke-[#B8F34A] stroke-2 group-hover:r-7 transition-all"
-                  />
-                  <text
-                    x={x}
-                    y={y - 12}
-                    textAnchor="middle"
-                    className="fill-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {p.val} {p.unit}
-                  </text>
-                  <text
-                    x={x}
-                    y={svgHeight - 4}
-                    textAnchor="middle"
-                    className="fill-[#9AA3A0] text-[10px] font-mono"
-                  >
-                    {p.date}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+              {metricPoints.map((p, idx) => {
+                const x = padding + (idx / divisor) * (svgWidth - padding * 2);
+                const y =
+                  svgHeight - padding - ((p.val - minVal) / valueRange) * (svgHeight - padding * 2);
+                return (
+                  <g key={idx} className="group cursor-pointer">
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="5"
+                      className="fill-[#0B0D0F] stroke-[#B8F34A] stroke-2 group-hover:r-7 transition-all"
+                    />
+                    <text
+                      x={x}
+                      y={y - 12}
+                      textAnchor="middle"
+                      className="fill-white text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      {p.val} {p.unit}
+                    </text>
+                    <text
+                      x={x}
+                      y={svgHeight - 4}
+                      textAnchor="middle"
+                      className="fill-[#9AA3A0] text-[10px] font-mono"
+                    >
+                      {p.date}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          )}
         </div>
       </div>
 
-      {/* Segmental DEXA Body Silhouette Scan */}
-      <BodySilhouetteVisualizer composition={composition} />
+      <BodySilhouetteVisualizer
+        composition={composition}
+        previousComposition={previousComposition}
+        chronologicalAge={userProfile.age}
+      />
 
-      {/* Monthly Circumferential Measurements Table */}
       <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-5 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2">
@@ -292,11 +363,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </div>
 
           <div className="text-xs text-[#45D483] font-bold bg-[#45D483]/10 px-3 py-1.5 rounded-xl border border-[#45D483]/20 self-start sm:self-auto">
-            Waist: -3.5 cm (3 months)
+            {waistText}
           </div>
         </div>
 
-        {/* Measurements Comparison Table */}
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -321,8 +391,8 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 { label: 'Shoulders (Circumference)', key: 'shouldersCm', goal: 'gain' },
                 { label: 'Neck', key: 'neckCm', goal: 'maintain' },
               ].map((row) => {
-                const currentVal = (latestMeasure as any)[row.key];
-                const prevVal = (previousMeasure as any)[row.key];
+                const currentVal = Number(latestMeasure?.[row.key as keyof MonthlyMeasurement] ?? 0);
+                const prevVal = Number(previousMeasure?.[row.key as keyof MonthlyMeasurement] ?? 0);
                 const delta = Math.round((currentVal - prevVal) * 10) / 10;
                 const isFavorable =
                   (row.goal === 'drop' && delta < 0) ||
@@ -334,7 +404,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                     <td className="py-3 px-3 font-semibold text-white">{row.label}</td>
                     {measurements.map((m) => (
                       <td key={m.id} className="py-3 px-3 font-mono text-[#F5F7F2]">
-                        {(m as any)[row.key]} cm
+                        {Number(m[row.key as keyof MonthlyMeasurement] ?? 0)} cm
                       </td>
                     ))}
                     <td className="py-3 px-3 text-right font-mono font-bold">
@@ -354,89 +424,62 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         </div>
       </div>
 
-      {/* Add Measurement Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
           <div className="w-full max-w-lg bg-[#12161A] border border-[#252B30] rounded-3xl p-6 sm:p-8 text-[#F5F7F2] shadow-2xl relative my-8">
-            <h3 className="text-lg font-bold text-white mb-1">Add Monthly Tape Measurement</h3>
+            <h3 className="text-lg font-bold text-white mb-1">Add Monthly Scan</h3>
             <p className="text-xs text-[#9AA3A0] mb-4">
-              Enter updated tape measurements in centimeters (cm)
+              New time-stamped document. BMI and resting metabolism are calculated.
             </p>
 
-            <form onSubmit={handleSaveNewMeasurement} className="space-y-4">
+            <form onSubmit={handleSaveNewMeasurement} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div>
                 <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Month / Label</label>
                 <input
                   type="text"
-                  required
-                  value={newMonth}
-                  onChange={(e) => setNewMonth(e.target.value)}
+                  value={form.month}
+                  onChange={(e) => setForm((prev) => ({ ...prev, month: e.target.value }))}
+                  placeholder="e.g. September 2026"
                   className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Chest (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newChest}
-                    onChange={(e) => setNewChest(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Waist (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newWaist}
-                    onChange={(e) => setNewWaist(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Hips (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newHips}
-                    onChange={(e) => setNewHips(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Biceps (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newBiceps}
-                    onChange={(e) => setNewBiceps(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Thighs (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newThighs}
-                    onChange={(e) => setNewThighs(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">Shoulders (cm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newShoulders}
-                    onChange={(e) => setNewShoulders(e.target.value)}
-                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
-                  />
-                </div>
+                {[
+                  ['weightKg', 'Weight (kg)'],
+                  ['bodyFatPercentage', 'Body Fat %'],
+                  ['muscleMassKg', 'Muscle Mass (kg)'],
+                  ['visceralFat', 'Visceral Fat'],
+                  ['bodyAge', 'Body Age'],
+                  ['chestCm', 'Chest (cm)'],
+                  ['waistCm', 'Waist (cm)'],
+                  ['hipsCm', 'Hips (cm)'],
+                  ['bicepsCm', 'Biceps (cm)'],
+                  ['thighsCm', 'Thighs (cm)'],
+                  ['calvesCm', 'Calves (cm)'],
+                  ['shouldersCm', 'Shoulders (cm)'],
+                  ['neckCm', 'Neck (cm)'],
+                  ['trunkFat', 'Trunk Fat %'],
+                  ['trunkMuscle', 'Trunk Muscle %'],
+                  ['armsFat', 'Arms Fat %'],
+                  ['armsMuscle', 'Arms Muscle %'],
+                  ['legsFat', 'Legs Fat %'],
+                  ['legsMuscle', 'Legs Muscle %'],
+                ].map(([key, label]) => (
+                  <div key={key}>
+                    <label className="block text-[11px] font-bold text-[#9AA3A0] mb-1">{label}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={form[key as keyof typeof form]}
+                      onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
+                    />
+                  </div>
+                ))}
               </div>
+
+              {errorMsg ? <p className="text-xs text-[#F05D5E]">{errorMsg}</p> : null}
 
               <div className="pt-3 flex justify-end gap-2">
                 <button
@@ -448,9 +491,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] font-black text-xs hover:bg-[#C8FF68]"
+                  disabled={saving}
+                  className="px-6 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] font-black text-xs hover:bg-[#C8FF68] disabled:opacity-50"
                 >
-                  Save Measurement
+                  {saving ? 'Saving…' : 'Save Measurement'}
                 </button>
               </div>
             </form>
