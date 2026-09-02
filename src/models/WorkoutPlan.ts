@@ -40,6 +40,11 @@ const splitDaySchema = new Schema(
     dayName: { type: String, required: true },
     focus: { type: String, default: "" },
     isRestDay: { type: Boolean, default: false },
+    intensityLevel: {
+      type: String,
+      enum: ["light", "moderate", "hard"],
+      default: "moderate",
+    },
     locked: { type: Boolean, default: false },
     workout: { type: dayWorkoutSchema, default: undefined },
   },

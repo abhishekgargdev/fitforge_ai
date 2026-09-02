@@ -12,6 +12,7 @@ export const aiWorkoutDaySchema = z.object({
   dayName: z.string().min(1),
   focus: z.string().min(1),
   isRestDay: z.boolean(),
+  intensityLevel: z.enum(["light", "moderate", "hard"]).optional().default("moderate"),
   workout: z
     .object({
       name: z.string().min(1),

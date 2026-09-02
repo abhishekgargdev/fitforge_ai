@@ -49,7 +49,7 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
     { id: 'home_gym', label: 'Home Gym Rack' },
   ];
 
-  const muscleOptions = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'];
+  const muscleOptions = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs / Core'];
 
   const toggleEquipment = (eq: EquipmentType) => {
     setSelectedEquipment((prev) =>

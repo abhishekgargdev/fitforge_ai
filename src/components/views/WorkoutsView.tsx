@@ -179,7 +179,22 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-white">{dayItem.dayName ?? dayItem.day}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white">{dayItem.dayName ?? dayItem.day}</span>
+                    {dayItem.intensityLevel && (
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border uppercase tracking-wider ${
+                          dayItem.intensityLevel === 'light'
+                            ? 'bg-[#5DA9FF]/15 text-[#5DA9FF] border-[#5DA9FF]/30'
+                            : dayItem.intensityLevel === 'hard'
+                            ? 'bg-[#FF5C5C]/15 text-[#FF5C5C] border-[#FF5C5C]/30'
+                            : 'bg-[#B8F34A]/15 text-[#B8F34A] border-[#B8F34A]/30'
+                        }`}
+                      >
+                        {dayItem.intensityLevel}
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -232,13 +247,26 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
           <div className="mt-5 pt-5 border-t border-[#252B30] bg-[#0B0D0F]/40 rounded-xl p-4 border border-[#252B30]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="text-base font-bold text-white">
                     {currentSplit.days[selectedDayIndex].dayName ?? currentSplit.days[selectedDayIndex].day} — {currentSplit.days[selectedDayIndex].workout?.name}
                   </h4>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#B8F34A]/15 text-[#B8F34A]">
                     {currentSplit.days[selectedDayIndex].workout?.durationMinutes} min
                   </span>
+                  {currentSplit.days[selectedDayIndex].intensityLevel && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                        currentSplit.days[selectedDayIndex].intensityLevel === 'light'
+                          ? 'bg-[#5DA9FF]/15 text-[#5DA9FF] border-[#5DA9FF]/30'
+                          : currentSplit.days[selectedDayIndex].intensityLevel === 'hard'
+                          ? 'bg-[#FF5C5C]/15 text-[#FF5C5C] border-[#FF5C5C]/30'
+                          : 'bg-[#B8F34A]/15 text-[#B8F34A] border-[#B8F34A]/30'
+                      }`}
+                    >
+                      Pacing: {currentSplit.days[selectedDayIndex].intensityLevel}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#9AA3A0] mt-0.5">
                   {currentSplit.days[selectedDayIndex].workout?.muscleGroups?.join(', ') ||

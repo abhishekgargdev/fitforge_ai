@@ -26,11 +26,26 @@ const DAY_MAP: Record<string, string> = {
   sun: "Sun",
 };
 
+import { WorkoutSessionModel } from "@/models/WorkoutSession";
+
 export async function generateAndSaveWorkoutPlan(
   userId: unknown,
   input: PlannerInput
 ) {
-  const activePlan = await WorkoutPlanModel.findOne({ userId, isActive: true });
+  const [activePlan, completedSessions, recentSessions] = await Promise.all([
+    WorkoutPlanModel.findOne({ userId, isActive: true }),
+    WorkoutSessionModel.countDocuments({ userId, status: "completed" }),
+    WorkoutSessionModel.find({ userId, status: "completed" }).sort({ completedAt: -1 }).limit(5),
+  ]);
+
+  const isFirstPlan = completedSessions === 0;
+  let recentSessionSummary = "";
+  if (recentSessions.length > 0) {
+    const avgDuration = Math.round(
+      recentSessions.reduce((acc, s) => acc + (s.durationMinutes || 0), 0) / recentSessions.length
+    );
+    recentSessionSummary = `${recentSessions.length} recent completed workouts, avg duration ${avgDuration} mins.`;
+  }
   
   const allowedDayNames = input.trainingDays
     ? input.trainingDays.map((d) => DAY_MAP[d.toLowerCase()] || d)
@@ -63,12 +78,16 @@ export async function generateAndSaveWorkoutPlan(
       user: workoutPlanUserPrompt({
         goal: input.goal,
         daysPerWeek: input.daysPerWeek,
+        trainingDays: input.trainingDays,
         duration: input.duration,
         experience: input.experience,
         equipment: input.equipment,
         focusMuscles: input.focusMuscles,
         preferences: input.preferences || "",
         catalog,
+        isFirstPlan,
+        completedSessionsCount: completedSessions,
+        recentSessionSummary,
         lockedConstraints,
         allowedDayNames,
       }),

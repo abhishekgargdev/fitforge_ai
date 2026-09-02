@@ -134,8 +134,11 @@ export function bodyPartQueryValue(raw: string) {
     legs: ["upper legs", "lower legs"],
     "upper legs": "upper legs",
     "lower legs": "lower legs",
-    core: "waist",
-    waist: "waist",
+    core: ["waist", "abs", "obliques"],
+    "abs / core": ["waist", "abs", "obliques"],
+    abs: ["waist", "abs", "obliques"],
+    waist: ["waist", "abs", "obliques"],
+    obliques: ["waist", "abs", "obliques"],
     cardio: "cardio",
     neck: "neck",
   };
@@ -144,7 +147,7 @@ export function bodyPartQueryValue(raw: string) {
 
 export function targetQueryValue(raw: string) {
   const key = raw.trim().toLowerCase();
-  const map: Record<string, string> = {
+  const map: Record<string, string | string[]> = {
     biceps: "biceps",
     triceps: "triceps",
     quads: "quadriceps",
@@ -152,7 +155,10 @@ export function targetQueryValue(raw: string) {
     hamstrings: "hamstrings",
     glutes: "glutes",
     calves: "calves",
-    abs: "abs",
+    abs: ["abs", "obliques", "waist"],
+    "abs / core": ["abs", "obliques", "waist"],
+    core: ["abs", "obliques", "waist"],
+    obliques: "obliques",
     pectorals: "pectorals",
     chest: "pectorals",
   };

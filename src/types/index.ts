@@ -280,6 +280,7 @@ export interface WorkoutSplitDay {
   day?: string;
   focus: string;
   isRestDay: boolean;
+  intensityLevel?: "light" | "moderate" | "hard";
   locked?: boolean;
   workout?: WorkoutTemplate;
 }

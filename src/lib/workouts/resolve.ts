@@ -17,19 +17,26 @@ export async function findExerciseByName(name: string) {
 
 export async function catalogNamesForPlanner(focusMuscles: string[]) {
   const names = new Set<string>();
-  const queries = focusMuscles.length > 0 ? focusMuscles : ["chest", "back", "legs"];
-  for (const muscle of queries) {
-    const rows = await ExerciseModel.find({
-      $or: [
-        { targetMuscles: { $regex: muscle, $options: "i" } },
-        { bodyParts: { $regex: muscle, $options: "i" } },
-        { primaryMuscles: { $regex: muscle, $options: "i" } },
-        { name: { $regex: muscle, $options: "i" } },
-      ],
-    })
-      .sort({ name: 1 })
-      .limit(20);
-    rows.forEach((row) => names.add(row.name));
+  const queries = focusMuscles.length > 0 ? focusMuscles : ["chest", "back", "legs", "abs"];
+  for (const rawMuscle of queries) {
+    const muscleTerms =
+      rawMuscle.toLowerCase().includes("abs") || rawMuscle.toLowerCase().includes("core")
+        ? ["waist", "abs", "obliques", "core"]
+        : [rawMuscle];
+
+    for (const muscle of muscleTerms) {
+      const rows = await ExerciseModel.find({
+        $or: [
+          { targetMuscles: { $regex: muscle, $options: "i" } },
+          { bodyParts: { $regex: muscle, $options: "i" } },
+          { primaryMuscles: { $regex: muscle, $options: "i" } },
+          { name: { $regex: muscle, $options: "i" } },
+        ],
+      })
+        .sort({ name: 1 })
+        .limit(20);
+      rows.forEach((row) => names.add(row.name));
+    }
   }
   if (names.size < 20) {
     const extra = await ExerciseModel.find().sort({ name: 1 }).limit(40);
@@ -47,6 +54,7 @@ export async function resolvePlanDays(plan: AiWorkoutPlan, allowedDayNames?: str
         dayName: day.dayName,
         focus: day.focus,
         isRestDay: true,
+        intensityLevel: "light" as const,
       });
       continue;
     }
@@ -79,6 +87,7 @@ export async function resolvePlanDays(plan: AiWorkoutPlan, allowedDayNames?: str
       dayName: day.dayName,
       focus: day.focus,
       isRestDay: exercises.length === 0,
+      intensityLevel: day.intensityLevel || "moderate",
       workout:
         exercises.length === 0
           ? undefined

@@ -405,7 +405,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   Target Muscle Group Emphasis (Select 2-4)
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Core'].map(
+                  {['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs / Core'].map(
                     (m) => {
                       const isSelected = focusMuscles.includes(m);
                       return (

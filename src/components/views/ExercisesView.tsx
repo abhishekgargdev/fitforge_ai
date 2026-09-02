@@ -24,7 +24,7 @@ const muscleFilters = [
   'Hamstrings',
   'Glutes',
   'Calves',
-  'Core',
+  'Abs / Core',
 ];
 const equipmentFilters = ['all', 'barbell', 'dumbbells', 'machines', 'bodyweight'];
 const difficultyFilters = ['all', 'Beginner', 'Intermediate', 'Advanced'];
