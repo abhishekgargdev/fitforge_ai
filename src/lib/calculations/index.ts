@@ -64,6 +64,18 @@ export function workoutVolume(
   return sets.reduce((sum, set) => sum + set.weightKg * set.reps, 0);
 }
 
+/** Percent change vs previous value (0 when there is no previous session). */
 export function progressDelta(current: number, previous: number): number {
-  return Math.round((current - previous) * 10) / 10;
+  if (!previous) return 0;
+  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
+}
+
+export function estimatedWorkoutCalories(
+  durationMinutes: number,
+  weightKg: number
+): number {
+  const met = 6;
+  const minutes = Math.max(1, durationMinutes);
+  const kg = weightKg > 0 ? weightKg : 75;
+  return Math.round(((met * 3.5 * kg) / 200) * minutes);
 }

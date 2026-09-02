@@ -1,4 +1,3 @@
-import type { FilterQuery } from "mongoose";
 import { fail, ok } from "@/lib/api/response";
 import { connectDB } from "@/lib/db/mongodb";
 import {
@@ -27,7 +26,7 @@ export async function GET(request: Request) {
     }
 
     const { q, bodyPart, equipment, target, difficulty, page, limit } = parsed.data;
-    const filter: FilterQuery<unknown> = {};
+    const filter: Record<string, unknown> = {};
 
     if (q) {
       filter.$or = [

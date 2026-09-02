@@ -34,7 +34,7 @@ function baseUrl() {
   );
 }
 
-function headers() {
+function headers(): Record<string, string> {
   const key = process.env.EXERCISEDB_API_KEY;
   if (!key) return {};
   return {

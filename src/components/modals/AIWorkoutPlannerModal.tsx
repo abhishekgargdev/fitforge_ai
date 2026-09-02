@@ -26,6 +26,7 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
   );
   const [focusMuscles, setFocusMuscles] = useState<string[]>(['Chest', 'Back', 'Shoulders', 'Legs']);
   const [preferences, setPreferences] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
 
@@ -63,6 +64,7 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setErrorMsg('');
     setGenerationStep(0);
 
     const stepInterval = setInterval(() => {
@@ -87,22 +89,17 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error("workout plan unavailable");
-      const data = await res.json();
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'workout plan unavailable');
       clearInterval(stepInterval);
       setTimeout(() => {
         setIsGenerating(false);
-        onApplyGeneratedPlan(data);
-      }, 500);
+        onApplyGeneratedPlan(json.data);
+      }, 400);
     } catch (e) {
       clearInterval(stepInterval);
       setIsGenerating(false);
-      // Fallback
-      onApplyGeneratedPlan({
-        planTitle: '8-Week Precision Hypertrophy Plan',
-        daysPerWeek,
-        weeklySchedule: [],
-      });
+      setErrorMsg(e instanceof Error ? e.message : 'Unable to generate a workout plan.');
     }
   };
 
@@ -124,6 +121,7 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
             <p className="text-xs text-[#9AA3A0] mt-1">
               Let FitForge AI engineer a science-backed periodization plan based on your body and goals.
             </p>
+            {errorMsg && <p className="text-xs text-[#F05D5E] mt-2">{errorMsg}</p>}
           </div>
           <button
             onClick={onClose}

@@ -223,6 +223,10 @@ export interface WorkoutExerciseItem {
   aiNote?: string;
   equipment: string;
   targetWeightKg?: number;
+  imageUrl?: string;
+  difficulty?: Exercise["difficulty"];
+  instructions?: string[];
+  tips?: string[];
 }
 
 export interface WorkoutTemplate {

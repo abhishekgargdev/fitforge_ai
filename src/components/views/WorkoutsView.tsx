@@ -22,51 +22,33 @@ import {
 
 interface WorkoutsViewProps {
   currentSplit: WorkoutSplitSchedule;
-  onStartWorkout: (workout: WorkoutTemplate) => void;
+  personalRecords: Array<{ exercise: string; weight: string; reps: string; date: string }>;
+  recentHistory: Array<{
+    id: string;
+    title: string;
+    date: string;
+    duration: string;
+    volume: string;
+    sets: number;
+  }>;
+  onStartWorkout: (workout: WorkoutTemplate, dayIndex: number) => void;
   onOpenAIPlanner: () => void;
   onNavigate: (tab: ActiveNavTab) => void;
 }
 
 export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   currentSplit,
+  personalRecords,
+  recentHistory,
   onStartWorkout,
   onOpenAIPlanner,
   onNavigate,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
-  const todayWorkout = currentSplit.days[0]?.workout || currentSplit.days[0]?.workout;
-
-  const personalRecords = [
-    { exercise: 'Barbell Bench Press', weight: '95 kg', reps: '6 reps', date: 'Aug 24' },
-    { exercise: 'Barbell Back Squat', weight: '135 kg', reps: '5 reps', date: 'Aug 20' },
-    { exercise: 'Conventional Deadlift', weight: '165 kg', reps: '4 reps', date: 'Aug 17' },
-    { exercise: 'Overhead Barbell Press', weight: '62.5 kg', reps: '6 reps', date: 'Aug 26' },
-  ];
-
-  const recentHistory = [
-    {
-      title: 'Upper Body Hypertrophy',
-      date: 'Yesterday, 6:30 PM',
-      duration: '45 min',
-      volume: '13,200 kg',
-      sets: 16,
-    },
-    {
-      title: 'Legs & Core Strength',
-      date: 'Aug 29, 7:15 AM',
-      duration: '52 min',
-      volume: '15,400 kg',
-      sets: 18,
-    },
-    {
-      title: 'Push Focus (Chest/Triceps)',
-      date: 'Aug 27, 6:00 PM',
-      duration: '40 min',
-      volume: '11,800 kg',
-      sets: 15,
-    },
-  ];
+  const firstTrainingIndex = currentSplit.days.findIndex((day) => !day.isRestDay && day.workout);
+  const todayIndex = firstTrainingIndex >= 0 ? firstTrainingIndex : 0;
+  const todayWorkout = currentSplit.days[todayIndex]?.workout;
 
   return (
     <div id="workouts-view" className="space-y-6 animate-in fade-in">
@@ -97,7 +79,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
           <button
             id="btn-workouts-start-today"
             type="button"
-            onClick={() => todayWorkout && onStartWorkout(todayWorkout)}
+            onClick={() => todayWorkout && onStartWorkout(todayWorkout, todayIndex)}
             className="px-5 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all hover:scale-105"
           >
             <Play className="w-4 h-4 fill-current" />
@@ -135,7 +117,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               >
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-bold text-white">{dayItem.dayName ?? dayItem.day}</span>
-                  {idx === 0 && (
+                  {idx === todayIndex && (
                     <span className="w-2 h-2 rounded-full bg-[#B8F34A] animate-pulse" />
                   )}
                 </div>
@@ -184,7 +166,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                 type="button"
                 onClick={() =>
                   currentSplit.days[selectedDayIndex].workout &&
-                  onStartWorkout(currentSplit.days[selectedDayIndex].workout!)
+                  onStartWorkout(currentSplit.days[selectedDayIndex].workout!, selectedDayIndex)
                 }
                 className="px-4 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-bold text-xs flex items-center gap-1.5 shadow-sm"
               >
@@ -242,6 +224,9 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             </div>
 
             <div className="space-y-2.5">
+              {personalRecords.length === 0 && (
+                <p className="text-xs text-[#9AA3A0]">No measured PRs yet. Complete a session to log them.</p>
+              )}
               {personalRecords.map((pr, idx) => (
                 <div
                   key={idx}
@@ -284,6 +269,9 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             </div>
 
             <div className="space-y-2.5">
+              {recentHistory.length === 0 && (
+                <p className="text-xs text-[#9AA3A0]">No completed sessions yet.</p>
+              )}
               {recentHistory.map((item, idx) => (
                 <div
                   key={idx}
@@ -312,7 +300,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
 
           <div className="mt-4 pt-3 border-t border-[#252B30] flex items-center justify-between">
             <span className="text-xs text-[#45D483] font-semibold">
-              Weekly Adherence: 100% (4 / 4 planned sessions)
+              {recentHistory.length} logged session{recentHistory.length === 1 ? '' : 's'}
             </span>
             <button
               onClick={() => onNavigate('exercises')}

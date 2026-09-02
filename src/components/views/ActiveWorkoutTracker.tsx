@@ -6,8 +6,7 @@
 // CompletedWorkoutSummary: workoutName, durationMinutes, totalVolumeKg, totalSets, totalExercises, caloriesBurnedEstimate, personalRecords, volumeChangeVsPreviousPercentage, aiSummary.
 
 import React, { useState } from 'react';
-import { WorkoutTemplate, ActiveWorkoutExercise, CompletedWorkoutSummary } from '@/types';
-import { exerciseLibraryData } from '@/data/mockData';
+import { WorkoutTemplate, ActiveWorkoutExercise, CompletedWorkoutSummary, Exercise } from '@/types';
 import { RestTimer } from '../common/RestTimer';
 import {
   Check,
@@ -26,36 +25,53 @@ import {
 
 interface ActiveWorkoutTrackerProps {
   workout: WorkoutTemplate;
+  loggedExercises?: ActiveWorkoutExercise[];
+  sessionId: string;
   onFinishWorkout: (summary: CompletedWorkoutSummary) => void;
   onCancel: () => void;
 }
 
+function exerciseFromTemplate(templateEx: WorkoutTemplate['exercises'][number]): Exercise {
+  return {
+    id: templateEx.exerciseId,
+    name: templateEx.exerciseName,
+    targetMuscle: templateEx.targetMuscle,
+    secondaryMuscles: [],
+    equipment: templateEx.equipment,
+    difficulty: templateEx.difficulty || 'Intermediate',
+    exerciseType: 'Strength',
+    imageUrl: templateEx.imageUrl || '',
+    gifUrl: templateEx.imageUrl,
+    instructions: templateEx.instructions || [],
+    commonMistakes: [],
+    tips: templateEx.tips || [],
+  };
+}
+
 export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   workout,
+  loggedExercises,
+  sessionId,
   onFinishWorkout,
   onCancel,
 }) => {
-  // Convert template exercises to active exercise tracking state
   const [exercises, setExercises] = useState<ActiveWorkoutExercise[]>(() => {
+    if (loggedExercises && loggedExercises.length > 0) return loggedExercises;
     return workout.exercises.map((templateEx) => {
-      const fullEx =
-        exerciseLibraryData.find((e) => e.id === templateEx.exerciseId) ||
-        exerciseLibraryData[0];
       const targetSetsCount = templateEx.sets || 3;
-      const targetRepsCount = parseInt(templateEx.reps.split('-')[0]) || 8;
-
+      const targetRepsCount = parseInt(String(templateEx.reps).split('-')[0], 10) || 8;
+      const weight = templateEx.targetWeightKg || 40;
       const sets = Array.from({ length: targetSetsCount }, (_, idx) => ({
         setNumber: idx + 1,
-        targetWeightKg: 60,
+        targetWeightKg: weight,
         targetReps: targetRepsCount,
-        actualWeightKg: 60,
+        actualWeightKg: weight,
         actualReps: targetRepsCount,
         rpe: 8,
         completed: false,
       }));
-
       return {
-        exercise: fullEx,
+        exercise: exerciseFromTemplate(templateEx),
         sets,
         restSeconds: templateEx.restSeconds || 90,
         aiNote: templateEx.aiNote,
@@ -129,41 +145,39 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     });
   };
 
-  // Total calculation for finish screen
-  const handleFinish = () => {
-    const elapsedMinutes = Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)) || 42;
-    let totalVolumeKg = 0;
-    let totalSetsCount = 0;
+  const [isFinishing, setIsFinishing] = useState(false);
 
-    exercises.forEach((e) => {
-      e.sets.forEach((s) => {
-        if (s.completed) {
-          totalVolumeKg += s.actualWeightKg * s.actualReps;
-          totalSetsCount++;
-        }
+  const persistPayload = () => ({
+    durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
+    exercises: exercises.map((item) => ({
+      exerciseId: item.exercise.id,
+      restSeconds: item.restSeconds,
+      aiNote: item.aiNote,
+      sets: item.sets,
+    })),
+  });
+
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    try {
+      await fetch(`/api/workouts/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(persistPayload()),
       });
-    });
-
-    if (totalVolumeKg === 0) {
-      totalVolumeKg = 12840; // realistic default volume
-      totalSetsCount = 16;
+      const res = await fetch(`/api/workouts/${sessionId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(persistPayload()),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Unable to complete workout.');
+      onFinishWorkout(json.data.summary);
+    } catch (error) {
+      console.error(error);
+      setIsFinishing(false);
     }
-
-    const summary: CompletedWorkoutSummary = {
-      id: `session-${Date.now()}`,
-      workoutName: workout.name,
-      date: 'Today',
-      durationMinutes: elapsedMinutes,
-      totalVolumeKg,
-      totalSets: totalSetsCount,
-      totalExercises: exercises.length,
-      caloriesBurnedEstimate: Math.round(elapsedMinutes * 7.5),
-      personalRecords: ['Barbell Bench Press (80kg × 8 reps)'],
-      volumeChangeVsPreviousPercentage: 6.2,
-      aiSummary: `Exceptional upper body session! You maintained a 6.2% volume progression and stayed within your 90-second target rest intervals. Pec activation and bar velocity were optimal throughout.`,
-    };
-
-    onFinishWorkout(summary);
   };
 
   const totalSetsCompletedAll = exercises.reduce(
@@ -209,8 +223,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           <button
             id="btn-active-finish-workout"
             type="button"
+            disabled={isFinishing}
             onClick={handleFinish}
-            className="px-4 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs transition-all shadow-[0_0_12px_rgba(184,243,74,0.3)]"
+            className="px-4 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs transition-all shadow-[0_0_12px_rgba(184,243,74,0.3)] disabled:opacity-50"
           >
             Finish Workout
           </button>

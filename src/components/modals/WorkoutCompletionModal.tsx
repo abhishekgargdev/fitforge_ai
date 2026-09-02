@@ -89,8 +89,9 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
               <TrendingUp className="w-4 h-4 text-[#45D483]" />
               Comparison with previous session:
             </span>
-            <span className="text-[#45D483] font-bold">
-              +{summary.volumeChangeVsPreviousPercentage}% total volume
+            <span className={`font-bold ${summary.volumeChangeVsPreviousPercentage >= 0 ? 'text-[#45D483]' : 'text-[#F05D5E]'}`}>
+              {summary.volumeChangeVsPreviousPercentage >= 0 ? '+' : ''}
+              {summary.volumeChangeVsPreviousPercentage}% total volume
             </span>
           </div>
 
