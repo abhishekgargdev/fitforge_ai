@@ -22,8 +22,10 @@ import {
   RotateCcw,
   Flame,
   Info,
+  RefreshCw,
 } from 'lucide-react';
 import { LoadingButton } from '../common/LoadingButton';
+import { SwapExerciseModal } from '../modals/SwapExerciseModal';
 
 interface ActiveWorkoutTrackerProps {
   workout: WorkoutTemplate;
@@ -87,6 +89,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [currentExIndex, setCurrentExIndex] = useState(0);
   const [sessionStartTime] = useState(Date.now());
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [showCheckin, setShowCheckin] = useState(true);
+  const [showEndCheckin, setShowEndCheckin] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [startWeightKg, setStartWeightKg] = useState<number | undefined>(undefined);
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
 
   const currentExerciseData = exercises[currentExIndex];
   const currentEx = currentExerciseData.exercise;
@@ -149,9 +156,6 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       return updated;
     });
   };
-
-  const [isFinishing, setIsFinishing] = useState(false);
-  const [showEndCheckin, setShowEndCheckin] = useState(false);
 
   const persistPayload = (endWeightKg?: number) => ({
     durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
@@ -263,6 +267,13 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   Target: <strong className="text-white">{currentEx.targetMuscle}</strong> | Difficulty: {currentEx.difficulty}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setSwapModalOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all shrink-0"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Swap
+              </button>
             </div>
 
             {/* AI Real-time Form / Execution Note */}
@@ -434,6 +445,40 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           onStart={(weight) => {
             setShowEndCheckin(false);
             handleFinish(weight);
+          }}
+        />
+      )}
+
+      {swapModalOpen && (
+        <SwapExerciseModal
+          isOpen={swapModalOpen}
+          onClose={() => setSwapModalOpen(false)}
+          sessionId={sessionId}
+          exerciseId={currentEx.id || currentEx.exerciseId || ''}
+          exerciseName={currentEx.name}
+          targetMuscle={typeof currentEx.targetMuscle === 'string' ? currentEx.targetMuscle : currentEx.targetMuscles?.[0] || 'General'}
+          equipment={typeof currentEx.equipment === 'string' ? currentEx.equipment : currentEx.equipments?.[0] || 'body weight'}
+          onSwapCompleted={(newDto) => {
+            if (newDto) {
+              setExercises((prev) => {
+                const updated = [...prev];
+                const item = { ...updated[currentExIndex] };
+                item.exercise = {
+                  ...item.exercise,
+                  name: newDto.name,
+                  imageUrl: newDto.imageUrl || newDto.gifUrl || '',
+                  gifUrl: newDto.gifUrl || newDto.imageUrl || '',
+                  bodyParts: newDto.bodyParts || [newDto.bodyPart || 'General'],
+                  equipments: newDto.equipments || [newDto.equipment || 'body weight'],
+                  targetMuscles: newDto.targetMuscles || [newDto.targetMuscle || 'General'],
+                  targetMuscle: newDto.targetMuscles?.[0] || newDto.targetMuscle || 'General',
+                  equipment: newDto.equipments?.[0] || newDto.equipment || 'body weight',
+                  instructions: newDto.instructions || [],
+                };
+                updated[currentExIndex] = item;
+                return updated;
+              });
+            }
           }}
         />
       )}

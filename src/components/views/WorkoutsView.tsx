@@ -22,8 +22,11 @@ import {
   Unlock,
   Info,
   Footprints,
+  RefreshCw,
 } from 'lucide-react';
 import { DailyActivityModal } from '../modals/DailyActivityModal';
+import { SwapExerciseModal } from '../modals/SwapExerciseModal';
+import { AddExerciseToPlanModal } from '../modals/AddExerciseToPlanModal';
 
 interface WorkoutsViewProps {
   currentSplit: WorkoutSplitSchedule;
@@ -54,6 +57,13 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [lockingDay, setLockingDay] = useState<string | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [addExercisePlanOpen, setAddExercisePlanOpen] = useState(false);
+  const [swapTarget, setSwapTarget] = useState<{
+    exerciseId: string;
+    exerciseName: string;
+    targetMuscle: string;
+    equipment: string;
+  } | null>(null);
 
   const firstTrainingIndex = currentSplit.days.findIndex((day) => !day.isRestDay && day.workout);
   const todayIndex = firstTrainingIndex >= 0 ? firstTrainingIndex : 0;
@@ -250,11 +260,47 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               </button>
             </div>
 
-            {/* Exercises Grid */}
+            {/* Exercises Grid with Swap, Reorder, & Lock Controls */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#9AA3A0]">
+                Day Movements Sequence ({currentSplit.days[selectedDayIndex].workout?.exercises.length} Exercises)
+              </span>
+              <button
+                type="button"
+                onClick={() => setAddExercisePlanOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Exercise
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {currentSplit.days[selectedDayIndex].workout?.exercises.map((ex, exIdx) => {
                 const isExLocked = Boolean(ex.locked);
                 const currentDayName = currentSplit.days[selectedDayIndex].dayName;
+                const totalExCount = currentSplit.days[selectedDayIndex].workout?.exercises.length || 0;
+
+                const handleMoveExercise = async (dir: 'up' | 'down') => {
+                  const exercises = [...(currentSplit.days[selectedDayIndex].workout?.exercises || [])];
+                  const targetIdx = dir === 'up' ? exIdx - 1 : exIdx + 1;
+                  if (targetIdx < 0 || targetIdx >= exercises.length) return;
+                  const temp = exercises[exIdx];
+                  exercises[exIdx] = exercises[targetIdx];
+                  exercises[targetIdx] = temp;
+                  const exerciseOrder = exercises.map((e: any) => String(e.exerciseId || e.exerciseName));
+
+                  try {
+                    await fetch(`/api/workout-plans/${currentSplit.id}/days/${currentDayName}/exercises`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ exerciseOrder }),
+                    });
+                    if (onRefreshSplit) onRefreshSplit();
+                  } catch (err) {
+                    console.error('Failed to reorder exercises:', err);
+                  }
+                };
+
                 return (
                   <div
                     key={exIdx}
@@ -262,40 +308,89 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                       isExLocked ? 'bg-[#181D22] border-[#F5B942]/40' : 'bg-[#181D22] border-[#252B30]'
                     }`}
                   >
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] text-[#B8F34A] font-bold flex items-center justify-center shrink-0 text-[11px] mt-0.5">
-                        {exIdx + 1}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-white block">{ex.exerciseName}</span>
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <div className="flex flex-col items-center gap-0.5 shrink-0">
+                        <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] text-[#B8F34A] font-bold flex items-center justify-center text-[11px]">
+                          {exIdx + 1}
+                        </span>
+                        {/* Reorder Up / Down buttons */}
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          <button
+                            type="button"
+                            disabled={exIdx === 0}
+                            onClick={() => handleMoveExercise('up')}
+                            className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            disabled={exIdx === totalExCount - 1}
+                            onClick={() => handleMoveExercise('down')}
+                            className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-white block truncate">{ex.exerciseName}</span>
                           {isExLocked && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#F5B942]/15 text-[#F5B942] font-semibold">
                               Locked
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-[#9AA3A0]">
-                          {ex.sets} Sets × {ex.reps} Reps • {ex.restSeconds}s rest
+                        <span className="text-[11px] text-[#9AA3A0] block mt-0.5">
+                          {ex.sets} Sets × {ex.reps} Reps • {ex.restSeconds}s rest • <span className="capitalize">{ex.equipment || 'body weight'}</span>
                         </span>
                         {ex.aiNote && (
-                          <span className="text-[10px] text-[#B8F34A] block mt-0.5">
+                          <span className="text-[10px] text-[#B8F34A] block mt-0.5 truncate">
                             💡 {ex.aiNote}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}
-                      className={`p-1.5 rounded hover:bg-white/10 transition-colors shrink-0 ${
-                        isExLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 hover:opacity-100'
-                      }`}
-                      title={isExLocked ? 'Exercise locked against AI changes' : 'Lock exercise'}
-                    >
-                      {isExLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {/* Swap button */}
+                      <button
+                        type="button"
+                        disabled={isExLocked}
+                        onClick={() =>
+                          setSwapTarget({
+                            exerciseId: String(ex.exerciseId || ex.exerciseName),
+                            exerciseName: ex.exerciseName,
+                            targetMuscle: ex.targetMuscle || 'General',
+                            equipment: ex.equipment || 'body weight',
+                          })
+                        }
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
+                          isExLocked
+                            ? 'bg-[#181D22] border-[#252B30] text-[#9AA3A0]/40 cursor-not-allowed'
+                            : 'bg-[#5DA9FF]/10 border-[#5DA9FF]/30 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F]'
+                        }`}
+                        title={isExLocked ? 'Unlock exercise first to swap' : 'Swap exercise with AI'}
+                      >
+                        <RefreshCw className="w-3 h-3" /> Swap
+                      </button>
+
+                      {/* Lock toggle button */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}
+                        className={`p-1.5 rounded hover:bg-white/10 transition-colors ${
+                          isExLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 hover:opacity-100'
+                        }`}
+                        title={isExLocked ? 'Exercise locked against AI changes' : 'Lock exercise'}
+                      >
+                        {isExLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -415,6 +510,35 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
         isOpen={activityModalOpen}
         onClose={() => setActivityModalOpen(false)}
       />
+
+      {swapTarget && (
+        <SwapExerciseModal
+          isOpen={Boolean(swapTarget)}
+          onClose={() => setSwapTarget(null)}
+          planId={currentSplit.id}
+          dayId={currentSplit.days[selectedDayIndex]?.dayName}
+          exerciseId={swapTarget.exerciseId}
+          exerciseName={swapTarget.exerciseName}
+          targetMuscle={swapTarget.targetMuscle}
+          equipment={swapTarget.equipment}
+          onSwapCompleted={() => {
+            if (onRefreshSplit) onRefreshSplit();
+          }}
+        />
+      )}
+
+      {currentSplit.id && currentSplit.days[selectedDayIndex] && (
+        <AddExerciseToPlanModal
+          isOpen={addExercisePlanOpen}
+          onClose={() => setAddExercisePlanOpen(false)}
+          planId={currentSplit.id}
+          dayId={currentSplit.days[selectedDayIndex].dayName}
+          dayName={currentSplit.days[selectedDayIndex].dayName}
+          onSuccess={() => {
+            if (onRefreshSplit) onRefreshSplit();
+          }}
+        />
+      )}
     </div>
   );
 };

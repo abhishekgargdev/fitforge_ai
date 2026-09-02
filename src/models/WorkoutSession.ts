@@ -30,6 +30,18 @@ const sessionExerciseSchema = new Schema(
   { _id: false }
 );
 
+const swapHistorySchema = new Schema(
+  {
+    originalExerciseId: { type: String, required: true },
+    originalExerciseName: { type: String, required: true },
+    swappedToExerciseId: { type: Schema.Types.ObjectId, ref: "Exercise", required: true },
+    swappedToExerciseName: { type: String, required: true },
+    swappedAt: { type: Date, default: Date.now },
+    reason: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const workoutSessionSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -41,6 +53,7 @@ const workoutSessionSchema = new Schema(
     completedAt: { type: Date },
     durationMinutes: { type: Number, default: 0 },
     exercises: { type: [sessionExerciseSchema], default: [] },
+    swapHistory: { type: [swapHistorySchema], default: [] },
     totalVolumeKg: { type: Number, default: 0 },
     totalSets: { type: Number, default: 0 },
     totalExercises: { type: Number, default: 0 },

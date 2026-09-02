@@ -46,6 +46,18 @@ const splitDaySchema = new Schema(
   { _id: false }
 );
 
+const swapHistorySchema = new Schema(
+  {
+    originalExerciseId: { type: String, required: true },
+    originalExerciseName: { type: String, required: true },
+    swappedToExerciseId: { type: Schema.Types.ObjectId, ref: "Exercise", required: true },
+    swappedToExerciseName: { type: String, required: true },
+    swappedAt: { type: Date, default: Date.now },
+    reason: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const workoutPlanSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -64,6 +76,7 @@ const workoutPlanSchema = new Schema(
     },
     nextPlanGenerationDate: { type: Date, index: true },
     days: { type: [splitDaySchema], default: [] },
+    swapHistory: { type: [swapHistorySchema], default: [] },
     plannerInputs: {
       goal: String,
       daysPerWeek: Number,
