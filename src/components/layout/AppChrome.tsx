@@ -18,6 +18,11 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const router = useRouter();
   const app = useMockApp();
   const activeTab = tabFromPath(pathname);
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  };
   const hideChrome = pathname.startsWith("/onboarding");
 
   if (hideChrome) {
@@ -36,7 +41,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         isCollapsed={app.sidebarCollapsed}
         onToggleCollapse={() => app.setSidebarCollapsed(!app.sidebarCollapsed)}
         onGoToLanding={() => router.push("/")}
-        onSignOut={() => router.push("/login")}
+        onSignOut={signOut}
       />
 
       <div className="flex-1 flex flex-col min-w-0 min-h-screen pb-20 md:pb-8">
@@ -45,7 +50,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           onSelectTab={app.navigateTab}
           userProfile={app.userProfile}
           onGoToLanding={() => router.push("/")}
-          onSignOut={() => router.push("/login")}
+          onSignOut={signOut}
         />
 
         <Header

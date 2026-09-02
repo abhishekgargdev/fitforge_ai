@@ -85,8 +85,32 @@ export interface UserProfile {
 export type Profile = UserProfile;
 
 export interface User {
+  id: string;
   name: string;
   email: string;
+  onboardingComplete: boolean;
+}
+
+export interface FitnessGoalRecord {
+  id: string;
+  userId: string;
+  fitnessGoal: FitnessGoal;
+  targetWeightKg: number;
+  focusMuscles: string[];
+  experienceLevel: ExperienceLevel;
+  trainingDaysPerWeek: number;
+  workoutDurationMinutes: number;
+  availableEquipment: EquipmentType[];
+}
+
+export interface BodyMeasurementRecord {
+  id: string;
+  userId: string;
+  date: string;
+  weightKg: number;
+  bodyFatPercentage: number;
+  bmi: number;
+  origin: DataOrigin;
 }
 
 export interface MetricEntry {

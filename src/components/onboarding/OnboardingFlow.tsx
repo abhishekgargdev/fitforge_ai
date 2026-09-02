@@ -1,8 +1,8 @@
 'use client';
 
-// Fields used: UserProfile.name, gender, age, heightCm, weightKg, bodyFatPercentage, fitnessGoal, focusMuscles,
-// experienceLevel, trainingDaysPerWeek, workoutDurationMinutes, availableEquipment, dietPreference, mealsPerDay, allergies;
-// local targetWeightKg (not persisted on UserProfile).
+// Fields used: name, gender, age, heightCm, weightKg, targetWeightKg, bodyFatPercentage, fitnessGoal,
+// focusMuscles, experienceLevel, trainingDaysPerWeek, workoutDurationMinutes, availableEquipment,
+// dietPreference, mealsPerDay, foodPreferences, allergies.
 
 import React, { useState } from 'react';
 import {
@@ -22,28 +22,33 @@ import {
   Flame,
   Activity,
   ShieldCheck,
-  Zap,
-  Clock,
-  HeartPulse,
+  AlertCircle,
 } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
+import {
+  activityFactorFromTrainingDays,
+  bmr as calcBmr,
+  macroTargets,
+  tdee as calcTdee,
+} from '@/lib/calculations';
 
 interface OnboardingFlowProps {
-  initialProfile: UserProfile;
-  onCompleteOnboarding: (configuredProfile: UserProfile) => void;
+  initialProfile?: Partial<UserProfile>;
+  onCompleteOnboarding: () => void;
   onCancelToLanding?: () => void;
 }
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
-  initialProfile,
+  initialProfile = {},
   onCompleteOnboarding,
   onCancelToLanding,
 }) => {
   const [step, setStep] = useState<number>(1);
   const totalSteps = 5;
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Onboarding state values initialized from current profile
-  const [name, setName] = useState(initialProfile.name || 'Alex Johnson');
+  const [name, setName] = useState(initialProfile.name || '');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>(initialProfile.gender || 'male');
   const [age, setAge] = useState<number>(initialProfile.age || 28);
   const [heightCm, setHeightCm] = useState<number>(initialProfile.heightCm || 180);
@@ -76,6 +81,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     initialProfile.dietPreference || 'non_vegetarian'
   );
   const [mealsPerDay, setMealsPerDay] = useState<number>(initialProfile.mealsPerDay || 4);
+  const [foodPreferences, setFoodPreferences] = useState<string>(
+    initialProfile.foodPreferences || ''
+  );
   const [allergies, setAllergies] = useState<string>(initialProfile.allergies || '');
 
   // Step 5 Animation Simulation
@@ -100,19 +108,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
   };
 
-  // Calculations for Step 5 synthesis
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
-  const activityMultiplier = daysPerWeek >= 5 ? 1.6 : daysPerWeek >= 4 ? 1.45 : 1.35;
-  const tdee = Math.round(bmr * activityMultiplier);
-  const targetCalories =
-    goal === 'lose_fat'
-      ? Math.round(tdee - 500)
-      : goal === 'build_muscle'
-      ? Math.round(tdee + 300)
-      : tdee;
-  const targetProtein = Math.round(weightKg * 2.0);
-  const targetFat = Math.round((targetCalories * 0.25) / 9);
-  const targetCarbs = Math.round((targetCalories - (targetProtein * 4 + targetFat * 9)) / 4);
+  const bmrValue = calcBmr({ weightKg, heightCm, age, gender });
+  const tdee = calcTdee(bmrValue, activityFactorFromTrainingDays(daysPerWeek));
+  const macros = macroTargets({ tdeeKcal: tdee, weightKg, goal });
+  const targetCalories = macros.targetCaloriesKcal;
+  const targetProtein = macros.targetProteinGrams;
+  const targetFat = macros.targetFatGrams;
+  const targetCarbs = macros.targetCarbsGrams;
 
   const handleNextStep = () => {
     if (step === 4) {
@@ -134,27 +136,45 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleFinalLaunch = () => {
-    const updatedProfile: UserProfile = {
-      ...initialProfile,
-      name: name.trim() || 'Alex Johnson',
-      gender,
-      age: Number(age),
-      heightCm: Number(heightCm),
-      weightKg: Number(weightKg),
-      bodyFatPercentage: Number(bodyFat),
-      fitnessGoal: goal,
-      focusMuscles,
-      experienceLevel: experience,
-      trainingDaysPerWeek: Number(daysPerWeek),
-      workoutDurationMinutes: Number(workoutDuration),
-      availableEquipment: equipment,
-      dietPreference: dietPref,
-      mealsPerDay: Number(mealsPerDay),
-      allergies: allergies.trim(),
-    };
-
-    onCompleteOnboarding(updatedProfile);
+  const handleFinalLaunch = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const res = await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          gender,
+          age: Number(age),
+          heightCm: Number(heightCm),
+          weightKg: Number(weightKg),
+          targetWeightKg: Number(targetWeightKg),
+          bodyFatPercentage: Number(bodyFat),
+          fitnessGoal: goal,
+          focusMuscles,
+          experienceLevel: experience,
+          trainingDaysPerWeek: Number(daysPerWeek),
+          workoutDurationMinutes: Number(workoutDuration),
+          availableEquipment: equipment,
+          dietPreference: dietPref,
+          mealsPerDay: Number(mealsPerDay),
+          foodPreferences: foodPreferences.trim(),
+          allergies: allergies.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSubmitError(json.error?.message || 'Unable to save your profile.');
+        return;
+      }
+      onCompleteOnboarding();
+    } catch {
+      setSubmitError('Unable to save your profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -457,6 +477,28 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider font-bold text-[#9AA3A0] block mb-1.5">
+                    Typical Session Duration
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[45, 60, 75, 90].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setWorkoutDuration(mins)}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                          workoutDuration === mins
+                            ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                            : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                        }`}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Available Equipment */}
                 <div>
                   <label className="text-[11px] uppercase tracking-wider font-bold text-[#9AA3A0] block mb-1.5">
@@ -568,6 +610,19 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider font-bold text-[#9AA3A0] block mb-1.5">
+                    Food Preferences
+                  </label>
+                  <textarea
+                    value={foodPreferences}
+                    onChange={(e) => setFoodPreferences(e.target.value)}
+                    placeholder="e.g. High protein, lean poultry, oats, greek yogurt"
+                    rows={3}
+                    className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/60 outline-none focus:border-[#B8F34A]"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -667,6 +722,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             </div>
           )}
 
+          {submitError && (
+            <div className="mt-4 p-3 rounded-xl bg-[#F05D5E]/10 border border-[#F05D5E]/30 flex items-center gap-2 text-xs text-[#F05D5E]">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Navigation Controls */}
           <div className="mt-8 pt-6 border-t border-[#252B30] flex items-center justify-between">
             {step > 1 ? (
@@ -703,12 +765,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               <button
                 type="button"
                 id="btn-onboarding-launch-app"
-                disabled={isCalibrating}
+                disabled={isCalibrating || isSubmitting}
                 onClick={handleFinalLaunch}
                 className="px-8 py-3.5 rounded-2xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs uppercase tracking-wider shadow-[0_4px_20px_rgba(184,243,74,0.4)] transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Launch My FitForge Dashboard</span>
+                <span>{isSubmitting ? 'Saving profile...' : 'Launch My FitForge Dashboard'}</span>
               </button>
             )}
           </div>

@@ -1,5 +1,7 @@
 'use client';
 
+// Fields used: email, password, name (register), confirmPassword (register). No mockData.
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -7,14 +9,11 @@ import {
   Mail,
   User,
   ArrowRight,
-  Sparkles,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   Eye,
   EyeOff,
   ChevronLeft,
-  Zap,
 } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
 
@@ -64,7 +63,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const strength = getPasswordStrength();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -90,30 +89,39 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
 
     setIsLoading(true);
+    try {
+      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const body =
+        authMode === 'register'
+          ? { name: name.trim(), email: email.trim(), password }
+          : { email: email.trim(), password };
 
-    setTimeout(() => {
-      setIsLoading(false);
-      if (authMode === 'register') {
-        // Direct new accounts into Onboarding
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setErrorMsg(json.error?.message || 'Authentication failed.');
+        return;
+      }
+
+      const complete = Boolean(json.data?.user?.onboardingComplete);
+      if (authMode === 'register' || !complete) {
         goOnboarding();
       } else {
         goDashboard({
-          name: name.trim() || 'Alex Johnson',
-          email: email.trim() || 'alex.johnson@fitforge.ai',
+          name: json.data.user.name,
+          email: json.data.user.email,
         });
       }
-    }, 600);
-  };
-
-  const handleGuestDemoLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
+      router.refresh();
+    } catch {
+      setErrorMsg('Unable to reach the server.');
+    } finally {
       setIsLoading(false);
-      goDashboard({
-        name: 'Alex Johnson',
-        email: 'alex.johnson@fitforge.ai',
-      });
-    }, 400);
+    }
   };
 
   return (
@@ -186,29 +194,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 : 'Begin your evidence-based progressive overload journey'}
             </p>
           </div>
-
-          {/* Quick 1-Click Guest Demo Sign-in */}
-          {authMode === 'login' && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-[#181D22] border border-[#B8F34A]/30 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#B8F34A]/20 text-[#B8F34A] flex items-center justify-center font-bold text-xs">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Instant Demo Athlete</div>
-                  <div className="text-[10px] text-[#9AA3A0]">Alex Johnson (Pre-configured Pro)</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                id="btn-quick-demo-signin"
-                onClick={handleGuestDemoLogin}
-                className="px-3 py-1.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] text-xs font-black uppercase tracking-wider transition-all"
-              >
-                1-Click Sign In
-              </button>
-            </div>
-          )}
 
           {/* Error Message */}
           {errorMsg && (
@@ -381,7 +366,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={handleGuestDemoLogin}
+              onClick={() => setErrorMsg('Google sign-in will be available in a later update. Use email and password for now.')}
               className="p-2.5 rounded-xl bg-[#0B0D0F] border border-[#252B30] hover:border-[#9AA3A0] text-xs font-semibold text-[#F5F7F2] flex items-center justify-center gap-2 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -407,7 +392,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
             <button
               type="button"
-              onClick={handleGuestDemoLogin}
+              onClick={() => setErrorMsg('Apple sign-in will be available in a later update. Use email and password for now.')}
               className="p-2.5 rounded-xl bg-[#0B0D0F] border border-[#252B30] hover:border-[#9AA3A0] text-xs font-semibold text-[#F5F7F2] flex items-center justify-center gap-2 transition-colors"
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">

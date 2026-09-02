@@ -15,7 +15,11 @@ export default function SettingsPage() {
       onResetData={app.resetData}
       onRestartOnboarding={() => router.push("/onboarding")}
       onGoToLanding={() => router.push("/")}
-      onSignOut={() => router.push("/login")}
+      onSignOut={async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
+        router.push("/login");
+        router.refresh();
+      }}
     />
   );
 }

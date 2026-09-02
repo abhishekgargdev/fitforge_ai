@@ -1,19 +1,28 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
-import { useMockApp } from "@/components/layout/MockAppProvider";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { userProfile, setUserProfile } = useMockApp();
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data?.user?.name) setName(json.data.user.name);
+      })
+      .catch(() => undefined);
+  }, []);
 
   return (
     <OnboardingFlow
-      initialProfile={userProfile}
-      onCompleteOnboarding={(profile) => {
-        setUserProfile(profile);
+      initialProfile={{ name }}
+      onCompleteOnboarding={() => {
         router.push("/dashboard");
+        router.refresh();
       }}
       onCancelToLanding={() => router.push("/")}
     />

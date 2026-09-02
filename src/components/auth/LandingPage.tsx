@@ -1,5 +1,8 @@
 'use client';
 
+// Fields used (marketing calculator only, not persisted): calcGoal, calcWeight, calcHeight, calcActivity.
+// Navigation: /register, /login, /dashboard (middleware enforces auth).
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {

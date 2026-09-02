@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/common/BrandLogo";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0B0D0F] text-[#F5F7F2] flex flex-col items-center justify-center p-4">
@@ -17,17 +19,41 @@ export default function ForgotPasswordPage() {
         <p className="text-xs text-[#9AA3A0] mt-1">
           Enter your email and we will send recovery instructions.
         </p>
+        {error && (
+          <div className="mt-4 p-3 rounded-xl bg-[#F05D5E]/10 border border-[#F05D5E]/30 text-xs text-[#F05D5E] flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
+        )}
         {sent ? (
           <div className="my-6 p-4 rounded-2xl bg-[#45D483]/10 border border-[#45D483]/30 text-xs text-[#45D483] flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 shrink-0" />
-            Recovery instructions dispatched. Check your inbox.
+            If an account exists for that email, recovery instructions have been sent.
           </div>
         ) : (
           <form
             className="my-5 space-y-3"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              setSent(true);
+              setError("");
+              setLoading(true);
+              try {
+                const res = await fetch("/api/auth/forgot-password", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email }),
+                });
+                const json = await res.json();
+                if (!res.ok) {
+                  setError(json.error?.message || "Unable to send recovery email.");
+                  return;
+                }
+                setSent(true);
+              } catch {
+                setError("Unable to send recovery email.");
+              } finally {
+                setLoading(false);
+              }
             }}
           >
             <input
@@ -40,9 +66,10 @@ export default function ForgotPasswordPage() {
             />
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-[#B8F34A] text-[#0B0D0F] font-bold text-xs"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-[#B8F34A] text-[#0B0D0F] font-bold text-xs disabled:opacity-50"
             >
-              Send Recovery Email
+              {loading ? "Sending..." : "Send Recovery Email"}
             </button>
           </form>
         )}
