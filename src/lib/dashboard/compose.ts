@@ -151,6 +151,13 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
 }
 
 export function coachContextFromDashboard(data: Awaited<ReturnType<typeof getDashboardData>>) {
+  const cleanMetrics: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data.metrics)) {
+    if (value !== null && value !== undefined) {
+      cleanMetrics[key] = value;
+    }
+  }
+
   return {
     profile: {
       name: data.profile.name,
@@ -160,7 +167,7 @@ export function coachContextFromDashboard(data: Awaited<ReturnType<typeof getDas
       trainingDaysPerWeek: data.profile.trainingDaysPerWeek,
       allergies: data.profile.allergies,
     },
-    latestMetrics: data.metrics,
+    latestMetrics: cleanMetrics,
     nutritionToday: {
       totals: data.nutrition.totals,
       goals: data.nutrition.goals,

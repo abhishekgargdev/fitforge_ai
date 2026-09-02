@@ -15,6 +15,7 @@ export type MeasurementDoc = {
   bodyFatPercentage: number;
   muscleMassKg?: number;
   bmi: number;
+  measuredBmi?: number;
   visceralFat?: number;
   bodyAge?: number;
   restingMetabolismKcal?: number;
@@ -83,6 +84,7 @@ export function toMeasurementDto(doc: MeasurementDoc): BodyMeasurementRecord {
     bodyFatPercentage: doc.bodyFatPercentage,
     muscleMassKg: doc.muscleMassKg ?? 0,
     bmi: doc.bmi,
+    measuredBmi: doc.measuredBmi,
     visceralFat: doc.visceralFat ?? 0,
     bodyAge: doc.bodyAge ?? 0,
     restingMetabolismKcal: doc.restingMetabolismKcal ?? 0,

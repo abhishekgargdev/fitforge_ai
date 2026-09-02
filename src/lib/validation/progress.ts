@@ -20,6 +20,8 @@ export const measurementCreateSchema = z.object({
   weightKg: z.number().min(30).max(300).optional(),
   bodyFatPercentage: z.number().min(3).max(60).optional(),
   muscleMassKg: z.number().min(10).max(120).optional(),
+  bmi: z.number().min(10).max(60).optional(),
+  measuredBmi: z.number().min(10).max(60).optional(),
   visceralFat: z.number().min(0).max(30).optional(),
   bodyAge: z.number().int().min(10).max(90).optional(),
   trunkFatPercentage: optionalNumber,

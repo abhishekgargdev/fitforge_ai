@@ -121,6 +121,7 @@ export interface BodyMeasurementRecord {
   bodyFatPercentage: number;
   muscleMassKg: number;
   bmi: number;
+  measuredBmi?: number;
   visceralFat: number;
   bodyAge: number;
   restingMetabolismKcal: number;
