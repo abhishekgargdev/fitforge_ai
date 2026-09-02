@@ -176,7 +176,8 @@ export interface BodyCompositionDetails {
 export interface Exercise {
   id: string;
   name: string;
-  targetMuscle: MuscleGroup;
+  bodyPart?: string;
+  targetMuscle: MuscleGroup | string;
   primaryMuscles?: string[];
   secondaryMuscles: (MuscleGroup | string)[];
   equipment: EquipmentType | string;
@@ -184,6 +185,7 @@ export interface Exercise {
   exerciseType: "Strength" | "Hypertrophy" | "Cardio" | "Mobility";
   category?: string;
   imageUrl: string;
+  gifUrl?: string;
   videoThumbUrl?: string;
   instructions: string[];
   musclesWorkedVisual?: {

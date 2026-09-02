@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:exercises": "node --env-file=.env --import tsx scripts/sync-exercises.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -48,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
