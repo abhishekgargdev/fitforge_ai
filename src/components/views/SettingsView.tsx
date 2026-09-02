@@ -33,6 +33,7 @@ const defaultSettings: UserSettings = {
   theme: 'dark',
   aiPersona: 'scientific',
   audioChimes: true,
+  planMode: 'ai',
 };
 
 export const SettingsView: React.FC<SettingsViewProps> = ({

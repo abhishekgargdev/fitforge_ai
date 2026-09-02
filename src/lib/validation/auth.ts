@@ -66,6 +66,7 @@ export const onboardingSchema = z.object({
   focusMuscles: z.array(z.string().min(1)).min(1),
   experienceLevel,
   trainingDaysPerWeek: z.number().int().min(2).max(7),
+  trainingDays: z.array(z.string()).optional(),
   workoutDurationMinutes: z.number().int().min(20).max(180),
   availableEquipment: z.array(equipmentType).min(1),
   dietPreference,

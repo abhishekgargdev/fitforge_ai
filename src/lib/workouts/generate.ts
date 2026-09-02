@@ -8,11 +8,22 @@ import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 export type PlannerInput = {
   goal: string;
   daysPerWeek: number;
+  trainingDays?: string[];
   duration: number;
   experience: string;
   equipment: string[];
   focusMuscles: string[];
   preferences?: string;
+};
+
+const DAY_MAP: Record<string, string> = {
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+  sun: "Sun",
 };
 
 export async function generateAndSaveWorkoutPlan(
@@ -21,6 +32,10 @@ export async function generateAndSaveWorkoutPlan(
 ) {
   const activePlan = await WorkoutPlanModel.findOne({ userId, isActive: true });
   
+  const allowedDayNames = input.trainingDays
+    ? input.trainingDays.map((d) => DAY_MAP[d.toLowerCase()] || d)
+    : undefined;
+
   // Format locked constraints for prompt
   let lockedConstraints = "";
   if (activePlan?.days) {
@@ -46,10 +61,16 @@ export async function generateAndSaveWorkoutPlan(
     aiPlan = await generateStructuredJson({
       system: workoutPlanSystemPrompt(),
       user: workoutPlanUserPrompt({
-        ...input,
+        goal: input.goal,
+        daysPerWeek: input.daysPerWeek,
+        duration: input.duration,
+        experience: input.experience,
+        equipment: input.equipment,
+        focusMuscles: input.focusMuscles,
         preferences: input.preferences || "",
         catalog,
         lockedConstraints,
+        allowedDayNames,
       }),
       schema: aiWorkoutPlanSchema,
     });
@@ -59,7 +80,7 @@ export async function generateAndSaveWorkoutPlan(
     throw error;
   }
 
-  const resolved = await resolvePlanDays(aiPlan);
+  const resolved = await resolvePlanDays(aiPlan, allowedDayNames);
   if (resolved.trainingDays === 0) {
     throw new Error("AI plan did not resolve to any catalog exercises");
   }

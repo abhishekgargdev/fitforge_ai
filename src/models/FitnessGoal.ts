@@ -16,6 +16,10 @@ const fitnessGoalSchema = new Schema(
       required: true,
     },
     trainingDaysPerWeek: { type: Number, required: true },
+    trainingDays: {
+      type: [String],
+      default: ["mon", "wed", "fri", "sat"],
+    },
     workoutDurationMinutes: { type: Number, required: true },
     availableEquipment: {
       type: [String],

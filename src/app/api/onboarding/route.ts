@@ -69,6 +69,7 @@ export async function POST(request: Request) {
           focusMuscles: body.focusMuscles,
           experienceLevel: body.experienceLevel,
           trainingDaysPerWeek: body.trainingDaysPerWeek,
+          trainingDays: body.trainingDays || ["mon", "wed", "fri", "sat"],
           workoutDurationMinutes: body.workoutDurationMinutes,
           availableEquipment: body.availableEquipment,
         },

@@ -113,7 +113,7 @@ export const RecoveryView: React.FC<RecoveryViewProps> = () => {
 
         <LoadingButton
           type="button"
-          loading={generating}
+          isLoading={generating}
           onClick={handleGenerateAI}
           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B8F34A]/20 to-[#5DA9FF]/20 border border-[#B8F34A]/40 text-[#F5F7F2] hover:border-[#B8F34A] text-xs font-bold flex items-center gap-2 transition-all shadow-sm shrink-0"
         >

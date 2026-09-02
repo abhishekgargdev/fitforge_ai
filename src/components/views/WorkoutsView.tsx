@@ -17,11 +17,13 @@ import {
   Flame,
   CheckCircle2,
   Trophy,
-  History,
+  History as HistoryIcon,
   Lock,
   Unlock,
   Info,
+  Footprints,
 } from 'lucide-react';
+import { DailyActivityModal } from '../modals/DailyActivityModal';
 
 interface WorkoutsViewProps {
   currentSplit: WorkoutSplitSchedule;
@@ -50,7 +52,8 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   onRefreshSplit,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-  const [locking, setLocking] = useState(false);
+  const [lockingDay, setLockingDay] = useState<string | null>(null);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
 
   const firstTrainingIndex = currentSplit.days.findIndex((day) => !day.isRestDay && day.workout);
   const todayIndex = firstTrainingIndex >= 0 ? firstTrainingIndex : 0;
@@ -59,7 +62,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
 
   const handleToggleLock = async (dayName: string, exerciseId?: string, currentLocked?: boolean) => {
     if (!currentSplit.id) return;
-    setLocking(true);
+    setLockingDay(dayName);
     try {
       await fetch(`/api/workout-plans/${currentSplit.id}/lock`, {
         method: 'PATCH',
@@ -74,7 +77,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
     } catch (err) {
       console.error('Failed to toggle lock:', err);
     } finally {
-      setLocking(false);
+      setLockingDay(null);
     }
   };
 
@@ -183,9 +186,21 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                 </div>
 
                 {isRest ? (
-                  <div className="mt-2">
-                    <span className="text-[11px] font-bold text-[#9AA3A0] block">Active Recovery</span>
-                    <span className="text-[10px] text-[#9AA3A0]/60">Mobility & Walk</span>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-[#9AA3A0] block">Active Recovery</span>
+                      <span className="text-[10px] text-[#9AA3A0]/60">Mobility & Walk</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivityModalOpen(true);
+                      }}
+                      className="px-2 py-1 rounded bg-[#B8F34A]/10 border border-[#B8F34A]/30 text-[#B8F34A] hover:bg-[#B8F34A] hover:text-[#0B0D0F] text-[10px] font-bold transition-all flex items-center gap-1"
+                    >
+                      <Footprints className="w-3 h-3" /> Log
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-2">
@@ -342,7 +357,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#5DA9FF]/15 text-[#5DA9FF] flex items-center justify-center">
-                  <History className="w-4 h-4" />
+                  <HistoryIcon className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Completed Workout History</h3>
@@ -395,6 +410,11 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
           </div>
         </div>
       </div>
+
+      <DailyActivityModal
+        isOpen={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+      />
     </div>
   );
 };

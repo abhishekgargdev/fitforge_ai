@@ -7,6 +7,8 @@ export const updateProfileSchema = z.object({
   heightCm: z.number().min(120).max(230),
   weightKg: z.number().min(35).max(200),
   bodyFatPercentage: z.number().min(3).max(60),
+  trainingDays: z.array(z.string()).optional(),
+  trainingDaysPerWeek: z.number().int().min(2).max(7).optional(),
 });
 
 export const updateSettingsSchema = z.object({

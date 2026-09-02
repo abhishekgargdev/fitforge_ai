@@ -37,10 +37,11 @@ export async function catalogNamesForPlanner(focusMuscles: string[]) {
   return [...names];
 }
 
-export async function resolvePlanDays(plan: AiWorkoutPlan) {
+export async function resolvePlanDays(plan: AiWorkoutPlan, allowedDayNames?: string[]) {
   const days = [];
   for (const day of plan.days) {
-    if (day.isRestDay || !day.workout) {
+    const isAllowedDay = !allowedDayNames || allowedDayNames.length === 0 || allowedDayNames.includes(day.dayName);
+    if (!isAllowedDay || day.isRestDay || !day.workout) {
       days.push({
         dayName: day.dayName,
         focus: day.focus,

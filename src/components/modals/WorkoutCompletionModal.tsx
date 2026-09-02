@@ -18,6 +18,7 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
   summary,
   onClose,
   onViewSummary,
+  onGoToRecovery,
 }) => {
   useEffect(() => {
     // Fire confetti celebration!

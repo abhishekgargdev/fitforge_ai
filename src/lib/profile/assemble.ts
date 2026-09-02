@@ -27,6 +27,7 @@ type LeanGoal = {
   fitnessGoal: UserProfile["fitnessGoal"];
   experienceLevel: UserProfile["experienceLevel"];
   trainingDaysPerWeek: number;
+  trainingDays?: string[];
   workoutDurationMinutes: number;
   availableEquipment: UserProfile["availableEquipment"];
   focusMuscles?: string[];
@@ -48,6 +49,7 @@ export function assembleUserProfile(
     fitnessGoal: goal.fitnessGoal,
     experienceLevel: goal.experienceLevel,
     trainingDaysPerWeek: goal.trainingDaysPerWeek,
+    trainingDays: goal.trainingDays ?? ["mon", "wed", "fri", "sat"],
     workoutDurationMinutes: goal.workoutDurationMinutes,
     availableEquipment: goal.availableEquipment,
     focusMuscles: goal.focusMuscles ?? [],

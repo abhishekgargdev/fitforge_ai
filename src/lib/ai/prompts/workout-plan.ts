@@ -20,9 +20,15 @@ export function workoutPlanUserPrompt(input: {
   preferences: string;
   catalog: string[];
   lockedConstraints?: string;
+  allowedDayNames?: string[];
 }) {
   const catalog = input.catalog.slice(0, 80).join(", ");
-  return `Build a ${input.daysPerWeek}-day weekly split (${input.duration} minutes per session).
+  const scheduleConstraint = input.allowedDayNames && input.allowedDayNames.length > 0
+    ? `STRICT SCHEDULE REQUIREMENT: Only schedule workout sessions on these exact days: ${input.allowedDayNames.join(", ")}. Mark every other day with isRestDay: true.`
+    : `Schedule ${input.daysPerWeek} training sessions across the week.`;
+
+  return `Build a weekly split (${input.duration} minutes per session).
+${scheduleConstraint}
 Goal: ${input.goal}
 Experience: ${input.experience}
 Equipment: ${input.equipment.join(", ") || "full gym"}

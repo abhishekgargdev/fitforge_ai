@@ -4,6 +4,8 @@ import { generateAndSaveWorkoutPlan } from "@/lib/workouts/generate";
 import { toSplitDto } from "@/lib/workouts/map";
 import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 
+import { FitnessGoalModel } from "@/models/FitnessGoal";
+
 export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> }
@@ -18,9 +20,11 @@ export async function POST(
     if (!inputs?.goal || !inputs.daysPerWeek) {
       return fail("This plan has no planner inputs to regenerate.", 400, "MISSING_PLANNER_INPUTS");
     }
+    const goalDoc = await FitnessGoalModel.findOne({ userId: session.user._id });
     const plan = await generateAndSaveWorkoutPlan(session.user._id, {
       goal: inputs.goal,
       daysPerWeek: inputs.daysPerWeek,
+      trainingDays: goalDoc?.trainingDays,
       duration: inputs.duration || 60,
       experience: inputs.experience || "intermediate",
       equipment: inputs.equipment || ["full_gym"],

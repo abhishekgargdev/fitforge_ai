@@ -63,6 +63,12 @@ export async function PUT(request: Request) {
     profile.bodyFatPercentage = body.bodyFatPercentage;
     await profile.save();
 
+    if (body.trainingDays) {
+      goal.trainingDays = body.trainingDays;
+      goal.trainingDaysPerWeek = body.trainingDaysPerWeek || body.trainingDays.length;
+      await goal.save();
+    }
+
     if (session.user.name !== body.name) {
       session.user.name = body.name;
       await session.user.save();

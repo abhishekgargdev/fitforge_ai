@@ -74,6 +74,7 @@ async function handleCron(request: Request) {
             const input: PlannerInput = {
               goal: goalDoc?.fitnessGoal || existingInputs?.goal || "build_muscle",
               daysPerWeek: goalDoc?.trainingDaysPerWeek || existingInputs?.daysPerWeek || planDoc.daysPerWeek || 4,
+              trainingDays: goalDoc?.trainingDays?.length ? goalDoc.trainingDays : undefined,
               duration: goalDoc?.workoutDurationMinutes || existingInputs?.duration || 60,
               experience: goalDoc?.experienceLevel || existingInputs?.experience || "intermediate",
               equipment: goalDoc?.availableEquipment?.length

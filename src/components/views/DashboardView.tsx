@@ -30,11 +30,12 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-  Calendar,
-  Clock,
   ChevronRight,
   Zap,
+  Trophy,
+  Footprints,
 } from 'lucide-react';
+import { DailyActivityModal } from '../modals/DailyActivityModal';
 
 interface DashboardViewProps {
   userProfile: UserProfile;
@@ -93,6 +94,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAIPlanner,
   onOpenAIAnalysis,
 }) => {
+  const [activityModalOpen, setActivityModalOpen] = React.useState(false);
   const totalCaloriesLogged = loggedMeals.reduce((acc, curr) => acc + curr.caloriesKcal, 0);
   const totalProteinLogged = loggedMeals.reduce((acc, curr) => acc + curr.proteinGrams, 0);
   const totalCarbsLogged = loggedMeals.reduce((acc, curr) => acc + curr.carbsGrams, 0);
@@ -424,17 +426,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               All Workouts
             </button>
-            <button
-              id="btn-dash-start-workout"
-              onClick={() => !isRestDay && todayWorkout.id && onStartWorkout(todayWorkout)}
-              disabled={Boolean(isRestDay) || !todayWorkout.id}
-              className="flex-1 bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 shadow-[0_2px_14px_rgba(184,243,74,0.25)] transition-all hover:scale-[1.01] disabled:opacity-40"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              START WORKOUT
-            </button>
+            {isRestDay ? (
+              <button
+                id="btn-dash-log-rest-activity"
+                onClick={() => setActivityModalOpen(true)}
+                className="flex-1 bg-[#181D22] border border-[#B8F34A]/40 text-[#B8F34A] hover:bg-[#B8F34A] hover:text-[#0B0D0F] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 transition-all shadow-sm"
+              >
+                <Footprints className="w-4 h-4" />
+                LOG TODAY'S ACTIVITY
+              </button>
+            ) : (
+              <button
+                id="btn-dash-start-workout"
+                onClick={() => todayWorkout.id && onStartWorkout(todayWorkout)}
+                disabled={!todayWorkout.id}
+                className="flex-1 bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 shadow-[0_2px_14px_rgba(184,243,74,0.25)] transition-all hover:scale-[1.01] disabled:opacity-40"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                START WORKOUT
+              </button>
+            )}
           </div>
         </div>
+
+        <DailyActivityModal
+          isOpen={activityModalOpen}
+          onClose={() => setActivityModalOpen(false)}
+        />
       </section>
 
       {/* Recovery Protocol Quick Card */}

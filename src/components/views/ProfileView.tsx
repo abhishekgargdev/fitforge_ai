@@ -191,6 +191,54 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
+        {/* Specific Training Days */}
+        <div className="pt-2">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1.5">
+            Specific Training Days (AI Schedules Workouts Only On These Days)
+          </label>
+          <div className="grid grid-cols-7 gap-1.5">
+            {[
+              { id: 'mon', label: 'Mon' },
+              { id: 'tue', label: 'Tue' },
+              { id: 'wed', label: 'Wed' },
+              { id: 'thu', label: 'Thu' },
+              { id: 'fri', label: 'Fri' },
+              { id: 'sat', label: 'Sat' },
+              { id: 'sun', label: 'Sun' },
+            ].map((day) => {
+              const currentDays = formData.trainingDays || ['mon', 'wed', 'fri', 'sat'];
+              const isSelected = currentDays.includes(day.id);
+              return (
+                <button
+                  key={day.id}
+                  type="button"
+                  onClick={() => {
+                    let next: string[];
+                    if (isSelected) {
+                      if (currentDays.length <= 2) return;
+                      next = currentDays.filter((d) => d !== day.id);
+                    } else {
+                      next = [...currentDays, day.id];
+                    }
+                    setFormData({
+                      ...formData,
+                      trainingDays: next,
+                      trainingDaysPerWeek: next.length,
+                    });
+                  }}
+                  className={`py-2 rounded-xl text-xs font-bold transition-all text-center ${
+                    isSelected
+                      ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                      : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                  }`}
+                >
+                  {day.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="pt-4 border-t border-[#252B30] flex justify-end">
           <LoadingButton
             id="btn-save-profile"

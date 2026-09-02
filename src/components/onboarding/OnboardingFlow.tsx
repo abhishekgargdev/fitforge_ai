@@ -67,12 +67,27 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [experience, setExperience] = useState<ExperienceLevel>(
     initialProfile.experienceLevel || 'intermediate'
   );
+  const [trainingDays, setTrainingDays] = useState<string[]>(
+    initialProfile.trainingDays || ['mon', 'wed', 'fri', 'sat']
+  );
   const [daysPerWeek, setDaysPerWeek] = useState<number>(
-    initialProfile.trainingDaysPerWeek || 4
+    initialProfile.trainingDaysPerWeek || (initialProfile.trainingDays?.length ?? 4)
   );
   const [workoutDuration, setWorkoutDuration] = useState<number>(
     initialProfile.workoutDurationMinutes || 60
   );
+
+  const toggleTrainingDay = (dayId: string) => {
+    let next: string[];
+    if (trainingDays.includes(dayId)) {
+      if (trainingDays.length <= 2) return; // Keep at least 2 days
+      next = trainingDays.filter((d) => d !== dayId);
+    } else {
+      next = [...trainingDays, dayId];
+    }
+    setTrainingDays(next);
+    setDaysPerWeek(next.length);
+  };
   const [equipment, setEquipment] = useState<EquipmentType[]>(
     initialProfile.availableEquipment || ['full_gym', 'barbell', 'dumbbells']
   );
@@ -157,6 +172,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           focusMuscles,
           experienceLevel: experience,
           trainingDaysPerWeek: Number(daysPerWeek),
+          trainingDays,
           workoutDurationMinutes: Number(workoutDuration),
           availableEquipment: equipment,
           dietPreference: dietPref,
@@ -455,26 +471,37 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </div>
                 </div>
 
-                {/* Training Days */}
+                {/* Specific Training Days Selector */}
                 <div>
                   <label className="text-[11px] uppercase tracking-wider font-bold text-[#9AA3A0] block mb-1.5">
-                    Days Available Per Week
+                    Select Specific Training Days ({trainingDays.length} Days Selected)
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[3, 4, 5, 6].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() => setDaysPerWeek(days)}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
-                          daysPerWeek === days
-                            ? 'bg-[#B8F34A] text-[#0B0D0F]'
-                            : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:text-white'
-                        }`}
-                      >
-                        {days} Days / Wk
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {[
+                      { id: 'mon', label: 'Mon' },
+                      { id: 'tue', label: 'Tue' },
+                      { id: 'wed', label: 'Wed' },
+                      { id: 'thu', label: 'Thu' },
+                      { id: 'fri', label: 'Fri' },
+                      { id: 'sat', label: 'Sat' },
+                      { id: 'sun', label: 'Sun' },
+                    ].map((day) => {
+                      const isSelected = trainingDays.includes(day.id);
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          onClick={() => toggleTrainingDay(day.id)}
+                          className={`py-2.5 rounded-xl text-xs font-bold transition-all text-center ${
+                            isSelected
+                              ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                              : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

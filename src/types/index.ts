@@ -71,6 +71,7 @@ export interface UserProfile {
   fitnessGoal: FitnessGoal;
   experienceLevel: ExperienceLevel;
   trainingDaysPerWeek: number;
+  trainingDays?: string[];
   workoutDurationMinutes: number;
   availableEquipment: EquipmentType[];
   focusMuscles: string[];
