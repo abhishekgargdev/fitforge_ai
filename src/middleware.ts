@@ -8,6 +8,7 @@ const PUBLIC_EXACT = new Set([
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/offline",
 ]);
 
 function isPublicPath(pathname: string) {
