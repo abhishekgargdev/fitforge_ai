@@ -27,57 +27,57 @@ export default function WorkoutsPage() {
     Array<{ id: string; title: string; date: string; duration: string; volume: string; sets: number }>
   >([]);
 
-  const load = useCallback(() => {
-    fetch("/api/workout-plans")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.data?.active) setSplit(json.data.active);
-        else setSplit(emptySplit);
-      })
-      .catch(() => setSplit(emptySplit));
+  const load = useCallback(async () => {
+    try {
+      const [planRes, recordsRes, historyRes] = await Promise.all([
+        fetch("/api/workout-plans"),
+        fetch("/api/workouts/records"),
+        fetch("/api/workouts?limit=8"),
+      ]);
 
-    fetch("/api/workouts/records")
-      .then((res) => res.json())
-      .then((json) => {
-        setRecords(
-          (json.data?.items || []).map(
-            (item: { exerciseName: string; weightKg: number; reps: number; date: string }) => ({
-              exercise: item.exerciseName,
-              weight: `${item.weightKg} kg`,
-              reps: `${item.reps} reps`,
-              date: new Date(item.date).toLocaleDateString(),
+      const planJson = await planRes.json();
+      if (planJson.data?.active) setSplit(planJson.data.active);
+      else setSplit(emptySplit);
+
+      const recordsJson = await recordsRes.json();
+      setRecords(
+        (recordsJson.data?.items || []).map(
+          (item: { exerciseName: string; weightKg: number; reps: number; date: string }) => ({
+            exercise: item.exerciseName,
+            weight: `${item.weightKg} kg`,
+            reps: `${item.reps} reps`,
+            date: new Date(item.date).toLocaleDateString(),
+          })
+        )
+      );
+
+      const historyJson = await historyRes.json();
+      setHistory(
+        (historyJson.data?.items || [])
+          .filter((item: { totalSets?: number }) => (item.totalSets || 0) >= 0)
+          .map(
+            (item: {
+              id: string;
+              workoutName: string;
+              date: string;
+              durationMinutes: number;
+              totalVolumeKg: number;
+              totalSets: number;
+            }) => ({
+              id: item.id,
+              title: item.workoutName,
+              date: new Date(item.date).toLocaleString(),
+              duration: `${item.durationMinutes} min`,
+              volume: `${item.totalVolumeKg.toLocaleString()} kg`,
+              sets: item.totalSets,
             })
           )
-        );
-      })
-      .catch(() => setRecords([]));
-
-    fetch("/api/workouts?limit=8")
-      .then((res) => res.json())
-      .then((json) => {
-        setHistory(
-          (json.data?.items || [])
-            .filter((item: { totalSets?: number }) => (item.totalSets || 0) >= 0)
-            .map(
-              (item: {
-                id: string;
-                workoutName: string;
-                date: string;
-                durationMinutes: number;
-                totalVolumeKg: number;
-                totalSets: number;
-              }) => ({
-                id: item.id,
-                title: item.workoutName,
-                date: new Date(item.date).toLocaleString(),
-                duration: `${item.durationMinutes} min`,
-                volume: `${item.totalVolumeKg.toLocaleString()} kg`,
-                sets: item.totalSets,
-              })
-            )
-        );
-      })
-      .catch(() => setHistory([]));
+      );
+    } catch {
+      setSplit(emptySplit);
+      setRecords([]);
+      setHistory([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -101,7 +101,10 @@ export default function WorkoutsPage() {
           setStartModalData({ open: true, dayIndex, workoutName: workout.name });
         }}
         onOpenAIPlanner={() => setPlannerOpen(true)}
-        onRefreshSplit={load}
+        onRefreshSplit={async () => {
+          await load();
+          router.refresh();
+        }}
         onNavigate={(tab) => {
           if (tab === "exercises") router.push("/exercises");
           else router.push("/dashboard");

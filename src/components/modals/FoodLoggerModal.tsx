@@ -3,7 +3,7 @@
 // Fields used: FoodItem.id, name, servingSize, servingWeightGrams, caloriesKcal, proteinGrams, carbsGrams, fatGrams, fiberGrams, category, isFavorite;
 // LoggedMealEntry.id, name, mealCategory, serving, caloriesKcal, proteinGrams, carbsGrams, fatGrams, fiberGrams, timeLogged.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FoodItem, MealCategory, LoggedMealEntry } from '@/types';
 import { Search, Plus, X, Flame, Camera, Upload, Sparkles, ShieldCheck } from 'lucide-react';
 import { LoadingButton } from '@/components/common/LoadingButton';
@@ -80,6 +80,15 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
   const [customCarbs, setCustomCarbs] = useState('');
   const [customFat, setCustomFat] = useState('');
   const [customFiber, setCustomFiber] = useState('');
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const captureInputRef = useRef<HTMLInputElement | null>(null);
+
+  const triggerPhotoInput = (mode: 'upload' | 'capture') => {
+    const input = mode === 'upload' ? uploadInputRef.current : captureInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -445,46 +454,54 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                       <span className="text-[11px] text-[#9AA3A0]">PNG, JPG, or WEBP up to 5MB</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <label className="cursor-pointer block rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50">
-                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#F5F7F2]">
-                          <Upload className="w-4 h-4" /> Upload
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setPhotoBase64(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                      </label>
-                      <label className="cursor-pointer block rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50">
-                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#F5F7F2]">
-                          <Camera className="w-4 h-4" /> Capture
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setPhotoBase64(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => triggerPhotoInput('upload')}
+                        className="rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50 text-xs font-bold text-[#F5F7F2] flex items-center justify-center gap-2"
+                      >
+                        <Upload className="w-4 h-4" /> Upload Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerPhotoInput('capture')}
+                        className="rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50 text-xs font-bold text-[#F5F7F2] flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" /> Click Photo
+                      </button>
                     </div>
+
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setPhotoBase64(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+
+                    <input
+                      ref={captureInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setPhotoBase64(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
                   </div>
                 )}
               </div>
