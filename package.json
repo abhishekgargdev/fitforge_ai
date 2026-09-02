@@ -1,12 +1,28 @@
 {
   "name": "fitforge-ai",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "FitForge AI — AI-Powered Fitness, Workout Planning, Nutrition Tracking & Recovery Platform",
   "private": true,
+  "author": "Abhishek Garg",
+  "license": "MIT",
+  "keywords": [
+    "fitness",
+    "ai",
+    "workout-planner",
+    "nutrition-tracker",
+    "nextjs",
+    "typescript",
+    "gemini-ai",
+    "nvidia-nim",
+    "exercisedb",
+    "mongodb"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "sync:exercises": "node --env-file=.env --import tsx scripts/sync-exercises.ts"
   },
   "dependencies": {
