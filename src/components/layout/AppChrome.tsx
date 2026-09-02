@@ -17,7 +17,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [foodLoggerOpen, setFoodLoggerOpen] = useState(false);
-  const [notifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -29,7 +29,36 @@ export function AppChrome({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => undefined);
+
+    fetch("/api/notifications")
+      .then((res) => res.json())
+      .then((json) => {
+        if (Array.isArray(json.data?.notifications)) {
+          setNotifications(json.data.notifications);
+        } else if (Array.isArray(json.data?.items)) {
+          setNotifications(json.data.items);
+        }
+      })
+      .catch(() => undefined);
   }, [pathname]);
+
+  const handleMarkAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await fetch("/api/notifications/read-all", { method: "PUT" });
+    } catch (err) {
+      console.error("Failed to mark notifications read", err);
+    }
+  };
+
+  const handleClearNotification = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await fetch(`/api/notifications/${id}`, { method: "DELETE" });
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
 
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -95,8 +124,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <Header
           userProfile={headerProfile}
           notifications={notifications}
-          onMarkAllNotificationsRead={() => undefined}
-          onClearNotification={() => undefined}
+          onMarkAllNotificationsRead={handleMarkAllRead}
+          onClearNotification={handleClearNotification}
           onNavigate={navigateTab}
           onToggleTheme={() => setIsDark((value) => !value)}
           isDark={isDark}

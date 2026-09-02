@@ -50,11 +50,25 @@ async function getJson<T>(path: string, params?: Record<string, string>): Promis
       if (value) url.searchParams.set(key, value);
     }
   }
-  const res = await fetch(url, { headers: headers() });
-  if (!res.ok) {
+
+  const maxRetries = 6;
+  let attempt = 0;
+
+  while (true) {
+    const res = await fetch(url, { headers: headers() });
+    if (res.ok) return (await res.json()) as T;
+
+    if (res.status === 429 && attempt < maxRetries) {
+      const retryAfter = res.headers.get("retry-after");
+      const waitMs = retryAfter ? Number(retryAfter) * 1000 : 1000 * Math.pow(2, attempt);
+      attempt += 1;
+      console.warn(`[exercisedb] 429, retry ${attempt}/${maxRetries} in ${waitMs}ms`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
     throw new Error(`ExerciseDB request failed (${res.status}) ${url.pathname}`);
   }
-  return (await res.json()) as T;
 }
 
 export async function fetchExercisePage(input?: { after?: string; limit?: number }) {

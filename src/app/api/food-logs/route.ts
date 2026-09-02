@@ -23,6 +23,21 @@ export async function GET(request: Request) {
     } else {
       filter.date = todayDate(date || undefined);
     }
+    const pageParam = url.searchParams.get("page");
+    const limitParam = url.searchParams.get("limit");
+    if (pageParam || limitParam) {
+      const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "20", 10) || 20));
+      const skip = (page - 1) * limit;
+      const [rows, total] = await Promise.all([
+        FoodLogModel.find(filter).sort({ loggedAt: 1 }).skip(skip).limit(limit),
+        FoodLogModel.countDocuments(filter),
+      ]);
+      return ok({
+        items: rows.map(toLogDto),
+        pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+      });
+    }
     const rows = await FoodLogModel.find(filter).sort({ loggedAt: 1 });
     return ok({ items: rows.map(toLogDto) });
   } catch (error) {
