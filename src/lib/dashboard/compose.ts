@@ -22,7 +22,7 @@ export function todayPlanIndex(daysLength: number) {
 }
 
 export async function getDashboardData(userId: unknown, range: ProgressRange = "3m") {
-  const [user, profile, goal, nutritionGoals, foodLogs, activePlan, measurementRows, latestTwo, recentSessions] =
+  const [user, profile, goal, nutritionGoals, foodLogs, activePlan, measurementRows, latestWeightRow, latestTwoScans, recentSessions] =
     await Promise.all([
       User.findById(userId),
       Profile.findOne({ userId }),
@@ -31,7 +31,8 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
       FoodLogModel.find({ userId, date: todayDate() }).sort({ loggedAt: 1 }),
       WorkoutPlanModel.findOne({ userId, isActive: true }),
       measurementsInRange(userId, range),
-      BodyMeasurement.find({ userId }).sort({ date: -1 }).limit(2),
+      BodyMeasurement.findOne({ userId, weightKg: { $ne: null } }).sort({ date: -1 }),
+      BodyMeasurement.find({ userId, origin: { $ne: 'WORKOUT_CHECKIN' } }).sort({ date: -1 }).limit(2),
       WorkoutSessionModel.find({ userId, status: "completed" }).sort({ completedAt: -1 }).limit(5),
     ]);
 
@@ -43,10 +44,10 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
   const calculatedBmi = bmi(profile.weightKg, profile.heightCm);
   const progressSummary = buildProgressSummary(measurementRows);
   const weightSeries = buildProgressSeries(measurementRows, "weight");
-  const latest = latestTwo[0] || null;
-  const previous = latestTwo[1] || null;
-  const composition = toComposition(latest);
-  const previousComposition = previous ? toComposition(previous) : null;
+  const latestScan = latestTwoScans[0] || null;
+  const previousScan = latestTwoScans[1] || null;
+  const composition = toComposition(latestScan);
+  const previousComposition = previousScan ? toComposition(previousScan) : null;
 
   const split = activePlan ? toSplitDto(activePlan) : null;
   let dayIndex = 0;
@@ -77,9 +78,9 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
   );
 
   const targetWeightKg = goal.targetWeightKg;
-  const weightKg = latest?.weightKg ?? profile.weightKg;
+  const weightKg = latestWeightRow?.weightKg ?? profile.weightKg;
   const distance = Math.abs(weightKg - targetWeightKg);
-  const span = Math.max(Math.abs((previous?.weightKg ?? weightKg) - targetWeightKg), 0.5);
+  const span = Math.max(Math.abs((previousScan?.weightKg ?? weightKg) - targetWeightKg), 0.5);
   const weightProgressPct = Math.max(0, Math.min(100, Math.round((1 - distance / span) * 100)));
 
   const fatDelta = progressSummary.metrics.fat.absDelta;
@@ -109,7 +110,7 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
       weightKg,
       weightDelta: progressSummary.metrics.weight.absDelta,
       weightProgressPct,
-      bodyFatPercentage: latest?.bodyFatPercentage ?? profile.bodyFatPercentage,
+      bodyFatPercentage: latestScan?.bodyFatPercentage ?? profile.bodyFatPercentage,
       fatDelta: progressSummary.metrics.fat.absDelta,
       bmi: calculatedBmi,
       bmiLabel,

@@ -3,6 +3,7 @@ import { requireSessionUser } from "@/lib/auth/session";
 import { paginationQuery } from "@/lib/validation/base";
 import { startWorkoutSchema } from "@/lib/validation/workouts";
 import { sessionToSummary, sessionToTemplate } from "@/lib/workouts/map";
+import { BodyMeasurement } from "@/models/BodyMeasurement";
 import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 import { WorkoutSessionModel } from "@/models/WorkoutSession";
 import type { SessionExerciseLike, SessionSetLike } from "@/lib/workouts/types";
@@ -119,6 +120,15 @@ export async function POST(request: Request) {
         };
       }),
     });
+
+    if (parsed.data.startWeightKg) {
+      await BodyMeasurement.create({
+        userId: session.user._id,
+        date: new Date(),
+        weightKg: parsed.data.startWeightKg,
+        origin: "WORKOUT_CHECKIN",
+      });
+    }
 
     return ok(
       {

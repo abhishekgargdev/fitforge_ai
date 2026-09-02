@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WorkoutsView } from "@/components/views/WorkoutsView";
 import { AIWorkoutPlannerModal } from "@/components/modals/AIWorkoutPlannerModal";
+import { WorkoutCheckinModal } from "@/components/modals/WorkoutCheckinModal";
 import type { UserProfile, WorkoutSplitSchedule } from "@/types";
 
 const emptySplit: WorkoutSplitSchedule = {
@@ -18,6 +19,7 @@ export default function WorkoutsPage() {
   const [split, setSplit] = useState<WorkoutSplitSchedule>(emptySplit);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [startModalData, setStartModalData] = useState<{ open: boolean; dayIndex: number; workoutName: string } | null>(null);
   const [records, setRecords] = useState<
     Array<{ exercise: string; weight: string; reps: string; date: string }>
   >([]);
@@ -94,16 +96,9 @@ export default function WorkoutsPage() {
         currentSplit={split}
         personalRecords={records}
         recentHistory={history}
-        onStartWorkout={async (_workout, dayIndex) => {
+        onStartWorkout={async (workout, dayIndex) => {
           if (!split.id) return;
-          const res = await fetch("/api/workouts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ workoutPlanId: split.id, dayIndex }),
-          });
-          const json = await res.json();
-          if (!res.ok) return;
-          router.push(`/workouts/active/${json.data.session.id}`);
+          setStartModalData({ open: true, dayIndex, workoutName: workout.name });
         }}
         onOpenAIPlanner={() => setPlannerOpen(true)}
         onNavigate={(tab) => {
@@ -118,6 +113,29 @@ export default function WorkoutsPage() {
           onApplyGeneratedPlan={() => {
             setPlannerOpen(false);
             load();
+          }}
+        />
+      )}
+      {startModalData?.open && profile && (
+        <WorkoutCheckinModal
+          workoutName={startModalData.workoutName}
+          latestWeightKg={profile.weightKg || 75}
+          onClose={() => setStartModalData(null)}
+          onStart={async (startWeightKg?: number) => {
+            const { dayIndex } = startModalData;
+            setStartModalData(null);
+            const res = await fetch("/api/workouts", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workoutPlanId: split.id,
+                dayIndex,
+                ...(startWeightKg ? { startWeightKg } : {}),
+              }),
+            });
+            const json = await res.json();
+            if (!res.ok) return;
+            router.push(`/workouts/active/${json.data.session.id}`);
           }}
         />
       )}

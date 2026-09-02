@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { WorkoutTemplate, ActiveWorkoutExercise, CompletedWorkoutSummary, Exercise } from '@/types';
+import { WorkoutCheckinModal } from '../modals/WorkoutCheckinModal';
 import { RestTimer } from '../common/RestTimer';
 import {
   Check,
@@ -147,9 +148,11 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const [isFinishing, setIsFinishing] = useState(false);
+  const [showEndCheckin, setShowEndCheckin] = useState(false);
 
-  const persistPayload = () => ({
+  const persistPayload = (endWeightKg?: number) => ({
     durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
+    ...(endWeightKg ? { endWeightKg } : {}),
     exercises: exercises.map((item) => ({
       exerciseId: item.exercise.id,
       restSeconds: item.restSeconds,
@@ -158,19 +161,19 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     })),
   });
 
-  const handleFinish = async () => {
+  const handleFinish = async (endWeightKg?: number) => {
     if (isFinishing) return;
     setIsFinishing(true);
     try {
       await fetch(`/api/workouts/${sessionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(persistPayload()),
+        body: JSON.stringify(persistPayload(endWeightKg)),
       });
       const res = await fetch(`/api/workouts/${sessionId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(persistPayload()),
+        body: JSON.stringify(persistPayload(endWeightKg)),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || 'Unable to complete workout.');
@@ -223,7 +226,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
           <LoadingButton
             id="btn-active-finish-workout"
-            onClick={handleFinish}
+            onClick={() => setShowEndCheckin(true)}
             isLoading={isFinishing}
             loadingText="Completing..."
             className="px-4 py-2 shadow-[0_0_12px_rgba(184,243,74,0.3)]"
@@ -406,7 +409,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             ) : (
               <LoadingButton
                 id="btn-final-finish-workout"
-                onClick={handleFinish}
+                onClick={() => setShowEndCheckin(true)}
                 isLoading={isFinishing}
                 loadingText="Completing..."
                 icon={<CheckCircle2 className="w-4 h-4" />}
@@ -418,6 +421,19 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           </div>
         </div>
       </div>
+
+      {showEndCheckin && (
+        <WorkoutCheckinModal
+          workoutName={workout.name}
+          latestWeightKg={0}
+          isStart={false}
+          onClose={() => setShowEndCheckin(false)}
+          onStart={(weight) => {
+            setShowEndCheckin(false);
+            handleFinish(weight);
+          }}
+        />
+      )}
     </div>
   );
 };

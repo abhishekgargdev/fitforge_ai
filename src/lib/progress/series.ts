@@ -67,15 +67,23 @@ function snapshot(current: number, previous: number | undefined, epsilon = 0.15)
 }
 
 export function buildProgressSummary(rows: MeasurementDoc[]) {
-  const latest = rows[rows.length - 1] || null;
-  const previous = rows.length > 1 ? rows[rows.length - 2] : null;
-  const oldest = rows[0] || null;
+  const latestWeightRow = rows[rows.length - 1] || null;
+  const previousWeightRow = rows.length > 1 ? rows[rows.length - 2] : null;
+
+  const fullScans = rows.filter(r => r.origin !== 'WORKOUT_CHECKIN');
+  const latest = fullScans[fullScans.length - 1] || null;
+  const previous = fullScans.length > 1 ? fullScans[fullScans.length - 2] : null;
+  const oldest = fullScans[0] || null;
+
+  const latestWeightDto = latestWeightRow ? toMeasurementDto(latestWeightRow) : null;
+  const previousWeightDto = previousWeightRow ? toMeasurementDto(previousWeightRow) : null;
+
   const latestDto = latest ? toMeasurementDto(latest) : null;
   const previousDto = previous ? toMeasurementDto(previous) : null;
   const oldestDto = oldest ? toMeasurementDto(oldest) : null;
 
   const metrics = {
-    weight: snapshot(latestDto?.weightKg ?? 0, previousDto?.weightKg),
+    weight: snapshot(latestWeightDto?.weightKg ?? 0, previousWeightDto?.weightKg),
     fat: snapshot(latestDto?.bodyFatPercentage ?? 0, previousDto?.bodyFatPercentage),
     muscle: snapshot(latestDto?.muscleMassKg ?? 0, previousDto?.muscleMassKg),
     bmi: snapshot(latestDto?.bmi ?? 0, previousDto?.bmi, 0.05),
@@ -103,7 +111,7 @@ export function buildProgressSummary(rows: MeasurementDoc[]) {
     composition: toComposition(latest),
     previousComposition: previous ? toComposition(previous) : null,
     metricEntries: rows.map(toMetricEntry),
-    monthly: [...rows].reverse().map(toMonthlyMeasurement),
+    monthly: [...fullScans].reverse().map(toMonthlyMeasurement),
   };
 }
 

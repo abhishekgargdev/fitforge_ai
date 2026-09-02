@@ -10,6 +10,7 @@ import { sessionToSummary } from "@/lib/workouts/map";
 import type { SessionExerciseLike, SessionSetLike } from "@/lib/workouts/types";
 import { Profile } from "@/models/Profile";
 import { WorkoutSessionModel } from "@/models/WorkoutSession";
+import { BodyMeasurement } from "@/models/BodyMeasurement";
 
 export async function POST(
   request: Request,
@@ -118,6 +119,15 @@ export async function POST(
         "First logged session is in. Treat these numbers as your baseline for progressive overload.";
     }
     await workout.save();
+
+    if (parsed.success && parsed.data.endWeightKg) {
+      await BodyMeasurement.create({
+        userId: session.user._id,
+        date: new Date(),
+        weightKg: parsed.data.endWeightKg,
+        origin: "WORKOUT_CHECKIN",
+      });
+    }
 
     return ok({ summary: sessionToSummary(workout) });
   } catch (error) {

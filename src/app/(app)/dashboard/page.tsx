@@ -6,6 +6,7 @@ import { DashboardView } from "@/components/views/DashboardView";
 import { FoodLoggerModal } from "@/components/modals/FoodLoggerModal";
 import { AINutritionPlannerModal } from "@/components/modals/AINutritionPlannerModal";
 import { AIAnalysisModal } from "@/components/modals/AIAnalysisModal";
+import { WorkoutCheckinModal } from "@/components/modals/WorkoutCheckinModal";
 import { emptyWorkout } from "@/lib/dashboard/empty";
 import type {
   BodyCompositionDetails,
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [loggerOpen, setLoggerOpen] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [workoutStartOpen, setWorkoutStartOpen] = useState(false);
 
   const load = useCallback(() => {
     fetch(`/api/dashboard?range=${range}`)
@@ -109,17 +111,7 @@ export default function DashboardPage() {
         }}
         onStartWorkout={async () => {
           if (!data.workout.planId || data.workout.isRestDay) return;
-          const res = await fetch("/api/workouts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workoutPlanId: data.workout.planId,
-              dayIndex: data.workout.dayIndex,
-            }),
-          });
-          const json = await res.json();
-          if (!res.ok) return;
-          router.push(`/workouts/active/${json.data.session.id}`);
+          setWorkoutStartOpen(true);
         }}
         onOpenFoodLogger={() => setLoggerOpen(true)}
         onOpenAIPlanner={() => setPlannerOpen(true)}
@@ -146,6 +138,28 @@ export default function DashboardPage() {
       )}
       {analysisOpen && (
         <AIAnalysisModal userProfile={data.profile} onClose={() => setAnalysisOpen(false)} />
+      )}
+      {workoutStartOpen && (
+        <WorkoutCheckinModal
+          workoutName={data.workout.todayWorkout?.name || 'Workout'}
+          latestWeightKg={data.metrics.weightKg}
+          onClose={() => setWorkoutStartOpen(false)}
+          onStart={async (startWeightKg?: number) => {
+            setWorkoutStartOpen(false);
+            const res = await fetch("/api/workouts", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workoutPlanId: data.workout.planId,
+                dayIndex: data.workout.dayIndex,
+                ...(startWeightKg ? { startWeightKg } : {}),
+              }),
+            });
+            const json = await res.json();
+            if (!res.ok) return;
+            router.push(`/workouts/active/${json.data.session.id}`);
+          }}
+        />
       )}
     </>
   );

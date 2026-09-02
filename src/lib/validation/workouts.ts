@@ -13,6 +13,7 @@ export const plannerInputSchema = z.object({
 export const startWorkoutSchema = z.object({
   workoutPlanId: z.string().min(1),
   dayIndex: z.number().int().min(0).max(6),
+  startWeightKg: z.number().positive().optional(),
 });
 
 export const updateSessionSchema = z.object({
@@ -35,4 +36,5 @@ export const updateSessionSchema = z.object({
     })
   ),
   durationMinutes: z.number().int().min(1).max(240).optional(),
+  endWeightKg: z.number().positive().optional(),
 });

@@ -4,7 +4,7 @@
  * current source of truth). Module phases should extend these, not fork them.
  */
 
-export type DataOrigin = "MEASURED" | "CALCULATED" | "AI_RECOMMENDATION";
+export type DataOrigin = "MEASURED" | "CALCULATED" | "AI_RECOMMENDATION" | "WORKOUT_CHECKIN";
 
 export type FitnessGoal =
   | "lose_fat"

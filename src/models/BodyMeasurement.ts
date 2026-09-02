@@ -6,9 +6,21 @@ const bodyMeasurementSchema = new Schema(
     date: { type: Date, required: true },
     month: { type: String, default: "" },
     weightKg: { type: Number, required: true },
-    bodyFatPercentage: { type: Number, required: true },
+    bodyFatPercentage: {
+      type: Number,
+      required: function (this: { origin?: string }) {
+        return this.origin !== "WORKOUT_CHECKIN";
+      },
+      default: 0,
+    },
     muscleMassKg: { type: Number, default: 0 },
-    bmi: { type: Number, required: true },
+    bmi: {
+      type: Number,
+      required: function (this: { origin?: string }) {
+        return this.origin !== "WORKOUT_CHECKIN";
+      },
+      default: 0,
+    },
     visceralFat: { type: Number, default: 0 },
     bodyAge: { type: Number, default: 0 },
     restingMetabolismKcal: { type: Number, default: 0 },
@@ -28,7 +40,7 @@ const bodyMeasurementSchema = new Schema(
     neckCm: { type: Number, default: 0 },
     origin: {
       type: String,
-      enum: ["MEASURED", "CALCULATED", "AI_RECOMMENDATION"],
+      enum: ["MEASURED", "CALCULATED", "AI_RECOMMENDATION", "WORKOUT_CHECKIN"],
       default: "MEASURED",
     },
   },
