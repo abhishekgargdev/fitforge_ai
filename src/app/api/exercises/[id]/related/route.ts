@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/api/response";
 import { connectDB } from "@/lib/db/mongodb";
 import { toExerciseDto } from "@/lib/exercises/map";
 import { ExerciseModel } from "@/models/Exercise";
+import mongoose from "mongoose";
 
 export async function GET(
   _request: Request,
@@ -12,21 +13,29 @@ export async function GET(
     if (!id) return fail("Exercise id is required.", 400, "VALIDATION_ERROR");
 
     await connectDB();
-    const current = await ExerciseModel.findOne({ exerciseId: id });
+    let current = await ExerciseModel.findOne({ exerciseId: id });
+    if (!current && mongoose.Types.ObjectId.isValid(id)) {
+      current = await ExerciseModel.findById(id);
+    }
     if (!current) return fail("Exercise not found.", 404, "EXERCISE_NOT_FOUND");
 
+    const targets = current.targetMuscles?.length ? current.targetMuscles : [current.target];
+    const parts = current.bodyParts?.length ? current.bodyParts : [current.bodyPart];
+
     const byTarget = await ExerciseModel.find({
-      exerciseId: { $ne: id },
-      target: current.target,
+      exerciseId: { $ne: current.exerciseId },
+      _id: { $ne: current._id },
+      targetMuscles: { $in: targets },
     })
       .sort({ name: 1 })
       .limit(8);
 
     let related = byTarget;
     if (related.length < 8) {
+      const excludeIds = [current._id, ...related.map((row) => row._id)];
       const extra = await ExerciseModel.find({
-        exerciseId: { $nin: [id, ...related.map((row) => row.exerciseId)] },
-        bodyPart: current.bodyPart,
+        _id: { $nin: excludeIds },
+        bodyParts: { $in: parts },
       })
         .sort({ name: 1 })
         .limit(8 - related.length);

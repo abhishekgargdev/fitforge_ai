@@ -1,13 +1,11 @@
 'use client';
 
-// Fields used: Exercise.id, name, bodyPart, targetMuscle, primaryMuscles, secondaryMuscles,
-// equipment, difficulty, instructions[], gifUrl/imageUrl, musclesWorkedVisual, commonMistakes[], tips[].
-// Search/filters: q, bodyPart/target muscle, equipment, difficulty. Related list lives on the detail page.
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Exercise } from '@/types';
-import { Search } from 'lucide-react';
+import { Search, Plus, Sparkles, User, Maximize2 } from 'lucide-react';
+import { AddExerciseModal } from '../modals/AddExerciseModal';
+import { ExerciseGifLightbox } from '../modals/ExerciseGifLightbox';
 
 interface ExercisesViewProps {
   onStartWithExercise?: (exercise: Exercise) => void;
@@ -30,10 +28,15 @@ const muscleFilters = [
 ];
 const equipmentFilters = ['all', 'barbell', 'dumbbells', 'machines', 'bodyweight'];
 const difficultyFilters = ['all', 'Beginner', 'Intermediate', 'Advanced'];
+const sourceFilters = [
+  { id: 'all', label: 'All Catalog & Community' },
+  { id: 'catalog', label: 'ExerciseDB Verified' },
+  { id: 'user', label: 'Community Created' },
+];
 
-function muscleQuery(muscle: string): { bodyPart?: string; target?: string } {
+function muscleQuery(muscle: string): { bodyParts?: string; targetMuscles?: string } {
   if (muscle === 'all') return {};
-  const targetMuscles: Record<string, string> = {
+  const targetMusclesMap: Record<string, string> = {
     Biceps: 'biceps',
     Triceps: 'triceps',
     Quads: 'quadriceps',
@@ -41,8 +44,8 @@ function muscleQuery(muscle: string): { bodyPart?: string; target?: string } {
     Glutes: 'glutes',
     Calves: 'calves',
   };
-  if (targetMuscles[muscle]) return { target: targetMuscles[muscle] };
-  return { bodyPart: muscle };
+  if (targetMusclesMap[muscle]) return { targetMuscles: targetMusclesMap[muscle] };
+  return { bodyParts: muscle };
 }
 
 export const ExercisesView: React.FC<ExercisesViewProps> = () => {
@@ -52,12 +55,17 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
   const [selectedMuscle, setSelectedMuscle] = useState<string>('all');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [selectedSource, setSelectedSource] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Exercise[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Modals state
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [lightboxExercise, setLightboxExercise] = useState<Exercise | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -66,20 +74,21 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQuery, selectedMuscle, selectedEquipment, selectedDifficulty]);
+  }, [debouncedQuery, selectedMuscle, selectedEquipment, selectedDifficulty, selectedSource]);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (debouncedQuery) params.set('q', debouncedQuery);
     const muscle = muscleQuery(selectedMuscle);
-    if (muscle.bodyPart) params.set('bodyPart', muscle.bodyPart);
-    if (muscle.target) params.set('target', muscle.target);
-    if (selectedEquipment !== 'all') params.set('equipment', selectedEquipment);
+    if (muscle.bodyParts) params.set('bodyParts', muscle.bodyParts);
+    if (muscle.targetMuscles) params.set('targetMuscles', muscle.targetMuscles);
+    if (selectedEquipment !== 'all') params.set('equipments', selectedEquipment);
     if (selectedDifficulty !== 'all') params.set('difficulty', selectedDifficulty);
+    if (selectedSource !== 'all') params.set('source', selectedSource);
     params.set('page', String(page));
     params.set('limit', '24');
     return params.toString();
-  }, [debouncedQuery, selectedMuscle, selectedEquipment, selectedDifficulty, page]);
+  }, [debouncedQuery, selectedMuscle, selectedEquipment, selectedDifficulty, selectedSource, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,10 +114,15 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
     };
   }, [queryString]);
 
+  const handleCreatedSuccess = (newExercise: Exercise) => {
+    setItems((prev) => [newExercise, ...prev]);
+    setTotal((prev) => prev + 1);
+  };
+
   return (
     <div id="exercises-view" className="space-y-6 animate-in fade-in">
       <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-5 md:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white">
               Exercise Library & Form Guide
@@ -117,13 +131,23 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
               Comprehensive movement biomechanics, execution cues, and muscle activation
             </p>
           </div>
-          <div className="text-xs text-[#B8F34A] font-bold bg-[#B8F34A]/10 px-3 py-1.5 rounded-xl border border-[#B8F34A]/20 self-start sm:self-auto">
-            {total} Movements Available
+          <div className="flex items-center gap-2">
+            <button
+              id="btn-add-exercise"
+              onClick={() => setAddModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#5DA9FF] text-[#0B0D0F] hover:bg-[#72B4FF] font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              Add an Exercise
+            </button>
+            <div className="text-xs text-[#B8F34A] font-bold bg-[#B8F34A]/10 px-3 py-2 rounded-xl border border-[#B8F34A]/20 shrink-0">
+              {total} Movements
+            </div>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-6 relative">
+          <div className="md:col-span-5 relative">
             <Search className="w-4 h-4 text-[#9AA3A0] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -165,16 +189,28 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
             </select>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3 flex items-center gap-2">
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2.5 text-xs text-white focus:border-[#B8F34A] outline-none capitalize"
+              className="w-1/2 bg-[#0B0D0F] border border-[#252B30] rounded-xl px-2.5 py-2.5 text-xs text-white focus:border-[#B8F34A] outline-none capitalize"
             >
               <option value="all">All Levels</option>
               {difficultyFilters.filter((d) => d !== 'all').map((d) => (
                 <option key={d} value={d} className="capitalize">
                   {d}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="w-1/2 bg-[#0B0D0F] border border-[#252B30] rounded-xl px-2.5 py-2.5 text-xs text-white focus:border-[#5DA9FF] outline-none"
+            >
+              {sourceFilters.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
                 </option>
               ))}
             </select>
@@ -208,50 +244,83 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {items.map((exercise) => (
-          <div
-            key={exercise.id}
-            id={`card-exercise-${exercise.id}`}
-            onClick={() => router.push(`/exercises/${exercise.id}`)}
-            className="bg-[#12161A] border border-[#252B30] rounded-2xl overflow-hidden group hover:border-[#B8F34A]/50 transition-all cursor-pointer flex flex-col justify-between shadow-sm"
-          >
-            <div>
-              <div className="relative w-full h-44 bg-[#0B0D0F] overflow-hidden">
-                <img
-                  src={exercise.imageUrl}
-                  alt={exercise.name}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm text-[10px] font-bold text-white border border-[#252B30] capitalize">
-                  {exercise.equipment}
+        {items.map((exercise) => {
+          const isCommunity = exercise.source === 'user';
+          const bodyPartsText = exercise.bodyParts?.length ? exercise.bodyParts.join(', ') : exercise.bodyPart || 'General';
+          const targetText = exercise.targetMuscles?.length ? exercise.targetMuscles.join(', ') : exercise.targetMuscle || 'Target';
+          const eqText = exercise.equipments?.length ? exercise.equipments.join(', ') : exercise.equipment || 'body weight';
+
+          return (
+            <div
+              key={exercise.id}
+              id={`card-exercise-${exercise.id}`}
+              className="bg-[#12161A] border border-[#252B30] rounded-2xl overflow-hidden group hover:border-[#B8F34A]/50 transition-all flex flex-col justify-between shadow-sm relative"
+            >
+              <div>
+                <div className="relative w-full h-44 bg-[#0B0D0F] overflow-hidden group/img">
+                  <img
+                    src={exercise.imageUrl || exercise.gifUrl}
+                    alt={exercise.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
+                  />
+                  {/* Click to open Lightbox overlay button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxExercise(exercise);
+                    }}
+                    className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition-opacity font-bold text-xs gap-1.5"
+                    title="Inspect movement GIF large"
+                  >
+                    <Maximize2 className="w-5 h-5 text-[#B8F34A]" />
+                    <span>Enlarge GIF</span>
+                  </button>
+
+                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm text-[10px] font-bold text-white border border-[#252B30] capitalize">
+                    {eqText}
+                  </div>
+
+                  {isCommunity ? (
+                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-[#5DA9FF]/90 backdrop-blur-sm text-[10px] font-extrabold text-[#0B0D0F] flex items-center gap-1 uppercase tracking-wider">
+                      <User className="w-3 h-3" /> Community
+                    </div>
+                  ) : (
+                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-[#12161A]/80 backdrop-blur-sm text-[10px] font-bold text-[#B8F34A] capitalize">
+                      {exercise.difficulty}
+                    </div>
+                  )}
                 </div>
-                <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-[#12161A]/80 backdrop-blur-sm text-[10px] font-bold text-[#B8F34A] capitalize">
-                  {exercise.difficulty}
+
+                <div
+                  className="p-4 cursor-pointer"
+                  onClick={() => router.push(`/exercises/${exercise.id}`)}
+                >
+                  <div className="text-[10px] uppercase font-bold text-[#9AA3A0] tracking-wider mb-0.5 capitalize">
+                    {bodyPartsText}
+                  </div>
+                  <h3 className="text-sm font-bold text-white group-hover:text-[#B8F34A] transition-colors line-clamp-1">
+                    {exercise.name}
+                  </h3>
+                  <p className="text-xs text-[#9AA3A0] mt-1 line-clamp-2">
+                    Target: <strong className="text-white capitalize">{targetText}</strong>.{' '}
+                    {exercise.instructions[0]}
+                  </p>
                 </div>
               </div>
 
-              <div className="p-4">
-                <div className="text-[10px] uppercase font-bold text-[#9AA3A0] tracking-wider mb-0.5">
-                  {exercise.bodyPart || exercise.targetMuscle}
-                </div>
-                <h3 className="text-sm font-bold text-white group-hover:text-[#B8F34A] transition-colors line-clamp-1">
-                  {exercise.name}
-                </h3>
-                <p className="text-xs text-[#9AA3A0] mt-1 line-clamp-2">
-                  Target: <strong className="text-white">{exercise.targetMuscle}</strong>.{' '}
-                  {exercise.instructions[0]}
-                </p>
+              <div
+                className="p-4 pt-0 flex items-center justify-between text-xs border-t border-[#252B30]/40 mt-2 cursor-pointer"
+                onClick={() => router.push(`/exercises/${exercise.id}`)}
+              >
+                <span className="text-[11px] text-[#B8F34A] font-bold flex items-center gap-1 group-hover:underline">
+                  View Form & Technique →
+                </span>
               </div>
             </div>
-
-            <div className="p-4 pt-0 flex items-center justify-between text-xs border-t border-[#252B30]/40 mt-2">
-              <span className="text-[11px] text-[#B8F34A] font-bold flex items-center gap-1 group-hover:underline">
-                View Form & Technique →
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {totalPages > 1 && (
@@ -277,6 +346,19 @@ export const ExercisesView: React.FC<ExercisesViewProps> = () => {
           </button>
         </div>
       )}
+
+      {/* Modals */}
+      <AddExerciseModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSuccess={handleCreatedSuccess}
+      />
+
+      <ExerciseGifLightbox
+        exercise={lightboxExercise}
+        isOpen={Boolean(lightboxExercise)}
+        onClose={() => setLightboxExercise(null)}
+      />
     </div>
   );
 };

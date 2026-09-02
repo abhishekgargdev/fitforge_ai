@@ -198,12 +198,16 @@ export interface BodyCompositionDetails {
 
 export interface Exercise {
   id: string;
+  exerciseId?: string;
   name: string;
+  bodyParts: string[];
+  equipments: string[];
+  targetMuscles: string[];
+  secondaryMuscles: string[];
   bodyPart?: string;
-  targetMuscle: MuscleGroup | string;
+  targetMuscle?: MuscleGroup | string;
   primaryMuscles?: string[];
-  secondaryMuscles: (MuscleGroup | string)[];
-  equipment: EquipmentType | string;
+  equipment?: EquipmentType | string;
   difficulty: "Beginner" | "Intermediate" | "Advanced";
   exerciseType: "Strength" | "Hypertrophy" | "Cardio" | "Mobility";
   category?: string;
@@ -217,6 +221,9 @@ export interface Exercise {
   };
   commonMistakes: string[];
   tips: string[];
+  source?: "catalog" | "user";
+  createdBy?: string;
+  cloudinaryPublicId?: string;
 }
 
 export interface ActiveWorkoutSet {

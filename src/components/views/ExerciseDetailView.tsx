@@ -1,12 +1,10 @@
 'use client';
 
-// Fields used: Exercise.id, name, bodyPart, targetMuscle, secondaryMuscles, equipment, difficulty,
-// instructions[], gifUrl/imageUrl, musclesWorkedVisual, commonMistakes[], tips[], related exercises.
-
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Exercise } from '@/types';
-import { AlertTriangle, ChevronLeft, Sparkles } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Sparkles, User, Maximize2 } from 'lucide-react';
+import { ExerciseGifLightbox } from '../modals/ExerciseGifLightbox';
 
 interface ExerciseDetailViewProps {
   exerciseId: string;
@@ -18,6 +16,7 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
   const [related, setRelated] = useState<Exercise[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +53,11 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
   if (loading) return <p className="text-sm text-[#9AA3A0]">Loading form guide…</p>;
   if (error || !exercise) return <p className="text-sm text-[#F05D5E]">{error || 'Exercise not found.'}</p>;
 
+  const isCommunity = exercise.source === 'user';
+  const bodyPartsText = exercise.bodyParts?.length ? exercise.bodyParts.join(', ') : exercise.bodyPart || 'General';
+  const targetText = exercise.targetMuscles?.length ? exercise.targetMuscles.join(', ') : exercise.targetMuscle || 'Target';
+  const eqText = exercise.equipments?.length ? exercise.equipments.join(', ') : exercise.equipment || 'body weight';
+
   return (
     <div id="exercise-detail-view" className="space-y-6 animate-in fade-in max-w-3xl mx-auto">
       <button
@@ -65,26 +69,39 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
       </button>
 
       <div className="bg-[#12161A] border border-[#252B30] rounded-3xl p-6 sm:p-8">
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase font-bold text-[#B8F34A] px-2 py-0.5 rounded-md bg-[#B8F34A]/10">
-            {exercise.targetMuscle}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs uppercase font-bold text-[#B8F34A] px-2.5 py-0.5 rounded-md bg-[#B8F34A]/10 border border-[#B8F34A]/20">
+            {targetText}
           </span>
-          <span className="text-xs text-[#9AA3A0] capitalize">• {exercise.equipment}</span>
+          <span className="text-xs text-[#9AA3A0] capitalize">• {eqText}</span>
           <span className="text-xs text-[#9AA3A0] capitalize">• {exercise.difficulty}</span>
+          {isCommunity && (
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#5DA9FF] bg-[#5DA9FF]/15 px-2 py-0.5 rounded-full border border-[#5DA9FF]/30 flex items-center gap-1">
+              <User className="w-3 h-3" /> Community Exercise
+            </span>
+          )}
         </div>
-        <h2 className="text-xl font-bold tracking-tight text-white mt-2">{exercise.name}</h2>
-        {exercise.bodyPart && (
-          <p className="text-xs text-[#9AA3A0] mt-1 capitalize">Body part: {exercise.bodyPart}</p>
-        )}
+
+        <h2 className="text-2xl font-black tracking-tight text-white mt-2">{exercise.name}</h2>
+        <p className="text-xs text-[#9AA3A0] mt-1 capitalize">Body parts: {bodyPartsText}</p>
 
         <div className="mt-5 space-y-5">
-          <div className="w-full h-64 rounded-2xl overflow-hidden bg-black/60 border border-[#252B30]">
+          <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-black/60 border border-[#252B30] group">
             <img
               src={exercise.gifUrl || exercise.imageUrl}
               alt={exercise.name}
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity font-bold text-xs gap-1.5"
+              title="Inspect GIF large"
+            >
+              <Maximize2 className="w-5 h-5 text-[#B8F34A]" />
+              <span>Enlarge GIF Movement</span>
+            </button>
           </div>
 
           <div className="p-4 rounded-2xl bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/40 flex items-start gap-3">
@@ -105,13 +122,12 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
               Muscle Engagement Matrix
             </h4>
             <div className="flex flex-wrap gap-2">
-              <div className="text-xs font-bold text-white bg-[#0B0D0F] px-3 py-1.5 rounded-xl border border-[#B8F34A]/40 flex items-center gap-1.5">
+              <div className="text-xs font-bold text-white bg-[#0B0D0F] px-3 py-1.5 rounded-xl border border-[#B8F34A]/40 flex items-center gap-1.5 capitalize">
                 <span className="w-2 h-2 rounded-full bg-[#B8F34A]" />
-                Primary:{' '}
-                {exercise.musclesWorkedVisual?.primary?.join(', ') || exercise.targetMuscle}
+                Primary: {targetText}
               </div>
               {exercise.secondaryMuscles.length > 0 && (
-                <div className="text-xs font-bold text-[#9AA3A0] bg-[#0B0D0F] px-3 py-1.5 rounded-xl border border-[#252B30] flex items-center gap-1.5">
+                <div className="text-xs font-bold text-[#9AA3A0] bg-[#0B0D0F] px-3 py-1.5 rounded-xl border border-[#252B30] flex items-center gap-1.5 capitalize">
                   <span className="w-2 h-2 rounded-full bg-[#5DA9FF]" />
                   Secondary: {exercise.secondaryMuscles.join(', ')}
                 </div>
@@ -132,7 +148,7 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
                   <span className="w-5 h-5 rounded-md bg-[#0B0D0F] text-[#B8F34A] font-black flex items-center justify-center shrink-0 text-[10px]">
                     {idx + 1}
                   </span>
-                  <span className="text-[#F5F7F2] leading-relaxed">{step}</span>
+                  <span className="text-[#F5F7F2] leading-relaxed">{step.replace(/^Step:\s*\d+\s*/i, '')}</span>
                 </div>
               ))}
             </div>
@@ -168,16 +184,34 @@ export const ExerciseDetailView: React.FC<ExerciseDetailViewProps> = ({ exercise
                 key={item.id}
                 type="button"
                 onClick={() => router.push(`/exercises/${item.id}`)}
-                className="text-left p-3 rounded-2xl bg-[#12161A] border border-[#252B30] hover:border-[#B8F34A]/50"
+                className="text-left p-3 rounded-2xl bg-[#12161A] border border-[#252B30] hover:border-[#B8F34A]/50 flex items-center justify-between"
               >
-                <div className="text-[10px] uppercase font-bold text-[#9AA3A0]">{item.targetMuscle}</div>
-                <div className="text-sm font-bold text-white">{item.name}</div>
-                <div className="text-[11px] text-[#9AA3A0] capitalize">{item.equipment}</div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-[#9AA3A0] capitalize">
+                    {item.targetMuscles?.join(', ') || item.targetMuscle}
+                  </div>
+                  <div className="text-sm font-bold text-white">{item.name}</div>
+                  <div className="text-[11px] text-[#9AA3A0] capitalize">
+                    {item.equipments?.join(', ') || item.equipment}
+                  </div>
+                </div>
+                {item.source === 'user' && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#5DA9FF]/20 text-[#5DA9FF] text-[9px] font-bold uppercase">
+                    Community
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
       )}
+
+      {/* Lightbox Modal */}
+      <ExerciseGifLightbox
+        exercise={exercise}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 };

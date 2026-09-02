@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/api/response";
 import { connectDB } from "@/lib/db/mongodb";
 import { toExerciseDto } from "@/lib/exercises/map";
 import { ExerciseModel } from "@/models/Exercise";
+import mongoose from "mongoose";
 
 export async function GET(
   _request: Request,
@@ -12,7 +13,11 @@ export async function GET(
     if (!id) return fail("Exercise id is required.", 400, "VALIDATION_ERROR");
 
     await connectDB();
-    const row = await ExerciseModel.findOne({ exerciseId: id });
+    let row = await ExerciseModel.findOne({ exerciseId: id });
+    if (!row && mongoose.Types.ObjectId.isValid(id)) {
+      row = await ExerciseModel.findById(id);
+    }
+
     if (!row) return fail("Exercise not found.", 404, "EXERCISE_NOT_FOUND");
 
     return ok({ exercise: toExerciseDto(row) });

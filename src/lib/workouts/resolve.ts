@@ -21,8 +21,9 @@ export async function catalogNamesForPlanner(focusMuscles: string[]) {
   for (const muscle of queries) {
     const rows = await ExerciseModel.find({
       $or: [
-        { target: { $regex: muscle, $options: "i" } },
-        { bodyPart: { $regex: muscle, $options: "i" } },
+        { targetMuscles: { $regex: muscle, $options: "i" } },
+        { bodyParts: { $regex: muscle, $options: "i" } },
+        { primaryMuscles: { $regex: muscle, $options: "i" } },
         { name: { $regex: muscle, $options: "i" } },
       ],
     })
@@ -54,15 +55,18 @@ export async function resolvePlanDays(plan: AiWorkoutPlan, allowedDayNames?: str
     for (const proposed of day.workout.exercises) {
       const match = await findExerciseByName(proposed.name);
       if (!match) continue;
+      const targetMuscle = match.targetMuscles?.[0] || match.target || match.bodyParts?.[0] || "General";
+      const eqName = match.equipments?.[0] || match.equipment || "body weight";
+
       exercises.push({
         exercise: match._id,
         exerciseName: match.name,
-        targetMuscle: match.target,
+        targetMuscle,
         sets: proposed.sets,
         reps: proposed.reps,
         restSeconds: proposed.restSeconds,
         aiNote: proposed.aiNote || "",
-        equipment: match.equipment,
+        equipment: eqName,
         targetWeightKg: 0,
         imageUrl: match.gifUrl,
         difficulty: match.difficulty,

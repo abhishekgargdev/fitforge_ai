@@ -37,6 +37,9 @@ function exerciseFromTemplate(templateEx: WorkoutTemplate['exercises'][number]):
   return {
     id: templateEx.exerciseId,
     name: templateEx.exerciseName,
+    bodyParts: [templateEx.targetMuscle || 'General'],
+    equipments: [templateEx.equipment || 'body weight'],
+    targetMuscles: [templateEx.targetMuscle || 'General'],
     targetMuscle: templateEx.targetMuscle,
     secondaryMuscles: [],
     equipment: templateEx.equipment,

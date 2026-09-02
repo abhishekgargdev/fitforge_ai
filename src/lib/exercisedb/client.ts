@@ -22,6 +22,7 @@ export type ExerciseDbPage = {
   meta?: {
     total?: number;
     hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
     nextCursor?: string | null;
   };
   data?: ExerciseDbRaw[] | ExerciseDbRaw;
@@ -51,11 +52,11 @@ async function getJson<T>(path: string, params?: Record<string, string>): Promis
     }
   }
 
-  const maxRetries = 6;
+  const maxRetries = 5;
   let attempt = 0;
 
   while (true) {
-    const res = await fetch(url, { headers: headers() });
+    const res = await fetch(url.toString(), { headers: headers() });
     if (res.ok) return (await res.json()) as T;
 
     if (res.status === 429 && attempt < maxRetries) {
@@ -72,7 +73,7 @@ async function getJson<T>(path: string, params?: Record<string, string>): Promis
 }
 
 export async function fetchExercisePage(input?: { after?: string; limit?: number }) {
-  const limit = String(Math.min(Math.max(input?.limit ?? 25, 1), 25));
+  const limit = String(Math.min(Math.max(input?.limit ?? 50, 1), 100));
   const json = await getJson<ExerciseDbPage>("/exercises", {
     limit,
     after: input?.after ?? "",
