@@ -67,6 +67,7 @@ export interface UserProfile {
   gender: "male" | "female" | "other";
   heightCm: number;
   weightKg: number;
+  targetWeightKg: number;
   bodyFatPercentage: number;
   fitnessGoal: FitnessGoal;
   experienceLevel: ExperienceLevel;

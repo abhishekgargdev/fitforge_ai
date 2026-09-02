@@ -6,6 +6,17 @@ import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 import { ExerciseModel } from "@/models/Exercise";
 import { toExerciseDto } from "@/lib/exercises/map";
 
+const calculateWorkoutDurationMinutes = (exercises: Array<{ sets?: number; restSeconds?: number; reps?: string }>) => {
+  const totalMinutes = (exercises || []).reduce((sum, exercise) => {
+    const sets = Number(exercise.sets || 0);
+    const restSeconds = Number(exercise.restSeconds || 0);
+    const baseWorkSeconds = Math.max(45, Number(String(exercise.reps || "8-12").split("-")[0] || 8) * 2.4 * sets);
+    return sum + Math.max(8, Math.ceil((baseWorkSeconds + sets * restSeconds) / 60));
+  }, 0);
+
+  return Math.max(30, Math.round(totalMinutes));
+};
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string; dayId: string; exerciseId: string }> }
@@ -77,6 +88,7 @@ export async function POST(
       };
 
       day.workout.exercises[exIndex] = updatedExercise;
+      day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
       plan.swapHistory.push({
         originalExerciseId: String(currentEx.exercise),
         originalExerciseName: currentEx.exerciseName,
@@ -128,6 +140,7 @@ export async function POST(
     };
 
     day.workout.exercises[exIndex] = updatedExercise;
+    day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
     plan.swapHistory.push({
       originalExerciseId: String(currentEx.exercise),
       originalExerciseName: currentEx.exerciseName,

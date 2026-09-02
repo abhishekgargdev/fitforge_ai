@@ -44,14 +44,7 @@ export default function ProfilePage() {
         const res = await fetch("/api/profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: updated.name,
-            age: updated.age,
-            gender: updated.gender,
-            heightCm: updated.heightCm,
-            weightKg: updated.weightKg,
-            bodyFatPercentage: updated.bodyFatPercentage,
-          }),
+          body: JSON.stringify(updated),
         });
         const json = await res.json();
         if (!res.ok) {

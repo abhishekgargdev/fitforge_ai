@@ -11,6 +11,7 @@ type LeanProfile = {
   gender: UserProfile["gender"];
   heightCm: number;
   weightKg: number;
+  targetWeightKg?: number;
   bodyFatPercentage: number;
   dietPreference: UserProfile["dietPreference"];
   mealsPerDay: number;
@@ -25,6 +26,7 @@ type LeanProfile = {
 
 type LeanGoal = {
   fitnessGoal: UserProfile["fitnessGoal"];
+  targetWeightKg?: number;
   experienceLevel: UserProfile["experienceLevel"];
   trainingDaysPerWeek: number;
   trainingDays?: string[];
@@ -45,6 +47,7 @@ export function assembleUserProfile(
     gender: profile.gender,
     heightCm: profile.heightCm,
     weightKg: profile.weightKg,
+    targetWeightKg: goal.targetWeightKg ?? profile.targetWeightKg ?? profile.weightKg,
     bodyFatPercentage: profile.bodyFatPercentage,
     fitnessGoal: goal.fitnessGoal,
     experienceLevel: goal.experienceLevel,

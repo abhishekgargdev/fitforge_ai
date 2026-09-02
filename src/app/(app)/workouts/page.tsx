@@ -101,6 +101,7 @@ export default function WorkoutsPage() {
           setStartModalData({ open: true, dayIndex, workoutName: workout.name });
         }}
         onOpenAIPlanner={() => setPlannerOpen(true)}
+        onRefreshSplit={load}
         onNavigate={(tab) => {
           if (tab === "exercises") router.push("/exercises");
           else router.push("/dashboard");

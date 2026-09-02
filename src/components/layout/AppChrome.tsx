@@ -82,6 +82,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     gender: "other" as const,
     heightCm: 0,
     weightKg: 0,
+    targetWeightKg: 0,
     bodyFatPercentage: 0,
     fitnessGoal: "general_health" as const,
     experienceLevel: "beginner" as const,

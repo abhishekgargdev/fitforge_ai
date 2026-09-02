@@ -5,7 +5,7 @@
 // memberSince from users.createdAt. Wearable cards are static UI (not persisted).
 
 import React, { useEffect, useState } from 'react';
-import { UserProfile, FitnessGoal, ExperienceLevel } from '@/types';
+import { UserProfile, FitnessGoal, ExperienceLevel, EquipmentType } from '@/types';
 import { OriginBadge } from '../common/OriginBadge';
 import {
   User,
@@ -44,6 +44,35 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const memberLabel = memberSince
     ? new Date(memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : null;
+
+  const fitnessGoalOptions = [
+    'lose_fat',
+    'build_muscle',
+    'maintain',
+    'improve_fitness',
+    'strength',
+    'general_health',
+  ] as const;
+
+  const experienceOptions = ['beginner', 'intermediate', 'advanced'] as const;
+  const dietOptions = ['non_vegetarian', 'vegetarian', 'vegan', 'pescatarian', 'keto', 'other'] as const;
+  const equipmentOptions: EquipmentType[] = [
+    'full_gym',
+    'dumbbells',
+    'barbell',
+    'machines',
+    'resistance_bands',
+    'bodyweight',
+    'home_gym',
+  ];
+
+  const toggleEquipment = (equipment: EquipmentType) => {
+    const current = formData.availableEquipment || [];
+    const next = current.includes(equipment)
+      ? current.filter((item) => item !== equipment)
+      : [...current, equipment];
+    setFormData({ ...formData, availableEquipment: next as EquipmentType[] });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,6 +208,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Target Weight (kg)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              value={formData.targetWeightKg ?? formData.weightKg}
+              onChange={(e) => setFormData({ ...formData, targetWeightKg: Number(e.target.value) })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
               Body Fat %
             </label>
             <input
@@ -186,6 +228,141 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               step="0.1"
               value={formData.bodyFatPercentage}
               onChange={(e) => setFormData({ ...formData, bodyFatPercentage: Number(e.target.value) })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Workout Duration (min)
+            </label>
+            <input
+              type="number"
+              value={formData.workoutDurationMinutes}
+              onChange={(e) => setFormData({ ...formData, workoutDurationMinutes: Number(e.target.value) })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Fitness Goal
+            </label>
+            <select
+              value={formData.fitnessGoal}
+              onChange={(e) => setFormData({ ...formData, fitnessGoal: e.target.value as any })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            >
+              {fitnessGoalOptions.map((goal) => (
+                <option key={goal} value={goal}>{goal.replace('_', ' ')}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Experience Level
+            </label>
+            <select
+              value={formData.experienceLevel}
+              onChange={(e) => setFormData({ ...formData, experienceLevel: e.target.value as any })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            >
+              {experienceOptions.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+            Focus Muscles
+          </label>
+          <input
+            type="text"
+            value={formData.focusMuscles.join(', ')}
+            onChange={(e) => setFormData({ ...formData, focusMuscles: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) })}
+            placeholder="Chest, Back, Legs"
+            className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+          />
+        </div>
+
+        <div className="pt-2">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+            Available Equipment
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {equipmentOptions.map((equipment) => {
+              const isSelected = (formData.availableEquipment || []).includes(equipment);
+              return (
+                <button
+                  key={equipment}
+                  type="button"
+                  onClick={() => toggleEquipment(equipment)}
+                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border ${
+                    isSelected
+                      ? 'bg-[#B8F34A] text-[#0B0D0F] border-[#B8F34A]'
+                      : 'bg-[#0B0D0F] border-[#252B30] text-[#9AA3A0]'
+                  }`}
+                >
+                  {equipment.replace('_', ' ')}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Diet Preference
+            </label>
+            <select
+              value={formData.dietPreference}
+              onChange={(e) => setFormData({ ...formData, dietPreference: e.target.value as any })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            >
+              {dietOptions.map((diet) => (
+                <option key={diet} value={diet}>{diet.replace('_', ' ')}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Meals Per Day
+            </label>
+            <input
+              type="number"
+              value={formData.mealsPerDay}
+              onChange={(e) => setFormData({ ...formData, mealsPerDay: Number(e.target.value) })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            />
+          </div>
+        </div>
+
+        <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Food Preferences
+            </label>
+            <input
+              type="text"
+              value={formData.foodPreferences}
+              onChange={(e) => setFormData({ ...formData, foodPreferences: e.target.value })}
+              className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-1">
+              Allergies
+            </label>
+            <input
+              type="text"
+              value={formData.allergies}
+              onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
               className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#B8F34A]"
             />
           </div>
@@ -253,46 +430,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </form>
 
-      {/* Connected Health Ecosystem */}
-      <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-6">
-        <h3 className="text-base font-bold text-white mb-1">Connected Hardware & Sensor Ecosystem</h3>
-        <p className="text-xs text-[#9AA3A0] mb-4">Sync real-time heart rate, resting metabolic rate, and steps</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-4 rounded-xl bg-[#181D22] border border-[#252B30] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Watch className="w-5 h-5 text-[#5DA9FF]" />
-              <div>
-                <span className="text-xs font-bold text-white block">Apple Watch / HealthKit</span>
-                <span className="text-[10px] text-[#45D483]">Synced 12m ago</span>
-              </div>
-            </div>
-            <span className="w-2.5 h-2.5 rounded-full bg-[#45D483]" />
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#181D22] border border-[#252B30] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone className="w-5 h-5 text-[#B8F34A]" />
-              <div>
-                <span className="text-xs font-bold text-white block">Garmin Connect</span>
-                <span className="text-[10px] text-[#45D483]">Connected</span>
-              </div>
-            </div>
-            <span className="w-2.5 h-2.5 rounded-full bg-[#45D483]" />
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#181D22] border border-[#252B30] flex items-center justify-between opacity-60">
-            <div className="flex items-center gap-3">
-              <Watch className="w-5 h-5 text-[#9AA3A0]" />
-              <div>
-                <span className="text-xs font-bold text-white block">Whoop 4.0 Strap</span>
-                <span className="text-[10px] text-[#9AA3A0]">Not Connected</span>
-              </div>
-            </div>
-            <button className="text-[10px] font-bold text-[#B8F34A] hover:underline">Connect</button>
-          </div>
-        </div>
-      </div>
+   
     </div>
   );
 };

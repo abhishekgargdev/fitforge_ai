@@ -3,6 +3,7 @@ import { z } from "zod";
 export const plannerInputSchema = z.object({
   goal: z.string().min(1),
   daysPerWeek: z.number().int().min(2).max(7),
+  trainingDays: z.array(z.string()).optional(),
   duration: z.number().int().min(20).max(180),
   experience: z.string().min(1),
   equipment: z.array(z.string()).min(1),

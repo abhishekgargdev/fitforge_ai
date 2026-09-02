@@ -19,7 +19,12 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
   onApplyGeneratedPlan,
 }) => {
   const [goal, setGoal] = useState<FitnessGoal>(userProfile.fitnessGoal || 'build_muscle');
-  const [daysPerWeek, setDaysPerWeek] = useState(userProfile.trainingDaysPerWeek || 4);
+  const [trainingDays, setTrainingDays] = useState<string[]>(
+    userProfile.trainingDays && userProfile.trainingDays.length > 0
+      ? userProfile.trainingDays
+      : ['mon', 'wed', 'fri', 'sat']
+  );
+  const [daysPerWeek, setDaysPerWeek] = useState(trainingDays.length || userProfile.trainingDaysPerWeek || 4);
   const [duration, setDuration] = useState(userProfile.workoutDurationMinutes || 60);
   const [experience, setExperience] = useState<ExperienceLevel>(userProfile.experienceLevel || 'intermediate');
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType[]>(
@@ -30,6 +35,18 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
+
+  const toggleDay = (dayId: string) => {
+    let next: string[];
+    if (trainingDays.includes(dayId)) {
+      if (trainingDays.length <= 2) return;
+      next = trainingDays.filter((d) => d !== dayId);
+    } else {
+      next = [...trainingDays, dayId];
+    }
+    setTrainingDays(next);
+    setDaysPerWeek(next.length);
+  };
 
   const stepsList = [
     'Analyzing your bio-profile & biomechanics...',
@@ -81,7 +98,8 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           goal,
-          daysPerWeek,
+          daysPerWeek: trainingDays.length,
+          trainingDays,
           duration,
           experience,
           equipment: selectedEquipment,
@@ -191,26 +209,37 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
             </div>
 
             {/* Training Days & Duration */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
-                  Training Frequency ({daysPerWeek} Days / Week)
+                  Select Specific Training Days ({trainingDays.length} Days Selected)
                 </label>
-                <div className="flex gap-1.5">
-                  {[2, 3, 4, 5, 6].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setDaysPerWeek(num)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                        daysPerWeek === num
-                          ? 'bg-[#B8F34A] text-[#0B0D0F]'
-                          : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
-                      }`}
-                    >
-                      {num}d
-                    </button>
-                  ))}
+                <div className="grid grid-cols-7 gap-1.5">
+                  {[
+                    { id: 'mon', label: 'Mon' },
+                    { id: 'tue', label: 'Tue' },
+                    { id: 'wed', label: 'Wed' },
+                    { id: 'thu', label: 'Thu' },
+                    { id: 'fri', label: 'Fri' },
+                    { id: 'sat', label: 'Sat' },
+                    { id: 'sun', label: 'Sun' },
+                  ].map((day) => {
+                    const isSelected = trainingDays.includes(day.id);
+                    return (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => toggleDay(day.id)}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all text-center ${
+                          isSelected
+                            ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                            : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

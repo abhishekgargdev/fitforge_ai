@@ -385,7 +385,16 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {/* Swap button */}
+                      {ex.exerciseId && (
+                        <a
+                          href={`/exercises/${ex.exerciseId}`}
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold border bg-[#B8F34A]/10 border-[#B8F34A]/30 text-[#B8F34A] hover:bg-[#B8F34A] hover:text-[#0B0D0F] transition-all"
+                          title="View exercise guide"
+                        >
+                          View
+                        </a>
+                      )}
+
                       <button
                         type="button"
                         disabled={isExLocked}
@@ -407,7 +416,6 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                         <RefreshCw className="w-3 h-3" /> Swap
                       </button>
 
-                      {/* Lock toggle button */}
                       <button
                         type="button"
                         onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}

@@ -436,7 +436,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <label className="cursor-pointer block space-y-3">
+                  <div className="space-y-4">
                     <div className="w-12 h-12 rounded-2xl bg-[#B8F34A]/10 text-[#B8F34A] flex items-center justify-center mx-auto">
                       <Upload className="w-6 h-6" />
                     </div>
@@ -444,21 +444,48 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                       <span className="text-xs font-bold text-white block">Upload or Capture Food Photo</span>
                       <span className="text-[11px] text-[#9AA3A0]">PNG, JPG, or WEBP up to 5MB</span>
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setPhotoBase64(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="cursor-pointer block rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50">
+                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#F5F7F2]">
+                          <Upload className="w-4 h-4" /> Upload
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setPhotoBase64(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      <label className="cursor-pointer block rounded-2xl border border-[#252B30] bg-[#181D22] p-3 hover:border-[#B8F34A]/50">
+                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#F5F7F2]">
+                          <Camera className="w-4 h-4" /> Capture
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setPhotoBase64(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (

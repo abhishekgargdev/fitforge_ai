@@ -125,7 +125,9 @@ export async function POST(request: Request) {
       await BodyMeasurement.create({
         userId: session.user._id,
         date: new Date(),
-        weightKg: parsed.data.startWeightKg,
+        weightKg: Number(parsed.data.startWeightKg),
+        bodyFatPercentage: 0,
+        bmi: 0,
         origin: "WORKOUT_CHECKIN",
       });
     }

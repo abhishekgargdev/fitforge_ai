@@ -26,14 +26,16 @@ const DAY_MAP: Record<string, string> = {
   sun: "Sun",
 };
 
+import { FitnessGoalModel } from "@/models/FitnessGoal";
 import { WorkoutSessionModel } from "@/models/WorkoutSession";
 
 export async function generateAndSaveWorkoutPlan(
   userId: unknown,
   input: PlannerInput
 ) {
-  const [activePlan, completedSessions, recentSessions] = await Promise.all([
+  const [activePlan, goalDoc, completedSessions, recentSessions] = await Promise.all([
     WorkoutPlanModel.findOne({ userId, isActive: true }),
+    FitnessGoalModel.findOne({ userId }),
     WorkoutSessionModel.countDocuments({ userId, status: "completed" }),
     WorkoutSessionModel.find({ userId, status: "completed" }).sort({ completedAt: -1 }).limit(5),
   ]);
@@ -47,8 +49,14 @@ export async function generateAndSaveWorkoutPlan(
     recentSessionSummary = `${recentSessions.length} recent completed workouts, avg duration ${avgDuration} mins.`;
   }
   
-  const allowedDayNames = input.trainingDays
-    ? input.trainingDays.map((d) => DAY_MAP[d.toLowerCase()] || d)
+  const effectiveDays = input.trainingDays?.length
+    ? input.trainingDays
+    : goalDoc?.trainingDays?.length
+    ? goalDoc.trainingDays
+    : undefined;
+
+  const allowedDayNames = effectiveDays
+    ? effectiveDays.map((d: string) => DAY_MAP[d.toLowerCase()] || d)
     : undefined;
 
   // Format locked constraints for prompt
@@ -78,7 +86,7 @@ export async function generateAndSaveWorkoutPlan(
       user: workoutPlanUserPrompt({
         goal: input.goal,
         daysPerWeek: input.daysPerWeek,
-        trainingDays: input.trainingDays,
+        trainingDays: effectiveDays,
         duration: input.duration,
         experience: input.experience,
         equipment: input.equipment,
