@@ -254,6 +254,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
+      <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Sliders className="w-4 h-4 text-[#B8F34A]" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+            Workout Plan Generation Mode
+          </h3>
+        </div>
+        <p className="text-xs text-[#9AA3A0]">
+          Choose whether AI periodically regenerates your weekly split or if you prefer full manual control over your workouts.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            disabled={!loaded}
+            onClick={() => persist({ ...settings, planMode: 'ai' })}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              (settings.planMode || 'ai') === 'ai'
+                ? 'bg-[#181D22] border-[#B8F34A] text-white ring-1 ring-[#B8F34A]'
+                : 'bg-[#0B0D0F]/40 border-[#252B30] text-[#9AA3A0]'
+            }`}
+          >
+            <div className="text-xs font-bold text-white mb-1">AI Adaptive (Default)</div>
+            <div className="text-[11px] text-[#9AA3A0]">
+              Automated weekly plan generation and AI-driven adaptations based on your progress.
+            </div>
+          </button>
+          <button
+            type="button"
+            disabled={!loaded}
+            onClick={() => persist({ ...settings, planMode: 'manual' })}
+            className={`p-4 rounded-xl border text-left transition-all ${
+              settings.planMode === 'manual'
+                ? 'bg-[#181D22] border-[#B8F34A] text-white ring-1 ring-[#B8F34A]'
+                : 'bg-[#0B0D0F]/40 border-[#252B30] text-[#9AA3A0]'
+            }`}
+          >
+            <div className="text-xs font-bold text-white mb-1">Manual Control</div>
+            <div className="text-[11px] text-[#9AA3A0]">
+              AI will not auto-generate or overwrite your plan. You maintain full manual control.
+            </div>
+          </button>
+        </div>
+      </div>
+
       <div className="bg-[#12161A] border border-[#252B30] rounded-2xl p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#181D22] text-[#B8F34A] flex items-center justify-center">

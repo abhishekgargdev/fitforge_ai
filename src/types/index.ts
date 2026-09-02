@@ -80,6 +80,7 @@ export interface UserProfile {
   allergies: string;
   unitSystem: "metric" | "imperial";
   theme: "dark" | "light" | "system";
+  planMode?: "ai" | "manual";
 }
 
 export type Profile = UserProfile;
@@ -91,6 +92,7 @@ export interface UserSettings {
   theme: "dark" | "light" | "system";
   aiPersona: AiPersona;
   audioChimes: boolean;
+  planMode: "ai" | "manual";
 }
 
 export interface User {
@@ -247,6 +249,7 @@ export interface WorkoutExerciseItem {
   difficulty?: Exercise["difficulty"];
   instructions?: string[];
   tips?: string[];
+  locked?: boolean;
 }
 
 export interface WorkoutTemplate {
@@ -269,6 +272,7 @@ export interface WorkoutSplitDay {
   day?: string;
   focus: string;
   isRestDay: boolean;
+  locked?: boolean;
   workout?: WorkoutTemplate;
 }
 
@@ -279,6 +283,21 @@ export interface WorkoutSplitSchedule {
   planMode?: "ai" | "manual";
   nextPlanGenerationDate?: string;
   days: WorkoutSplitDay[];
+}
+
+export interface RecoveryItem {
+  id?: string;
+  type: "shower" | "stretch" | "mobility" | "supplement" | "meditation" | "sleep" | "hydration";
+  title: string;
+  description: string;
+  source?: "ai" | "manual";
+}
+
+export interface RecoveryPlan {
+  id: string;
+  userId: string;
+  date: string;
+  items: RecoveryItem[];
 }
 
 export interface CompletedWorkoutSummary {
@@ -393,6 +412,7 @@ export type ActiveNavTab =
   | "exercises"
   | "nutrition"
   | "progress"
+  | "recovery"
   | "ai_coach"
   | "profile"
   | "settings";

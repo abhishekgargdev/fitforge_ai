@@ -19,6 +19,7 @@ export function workoutPlanUserPrompt(input: {
   focusMuscles: string[];
   preferences: string;
   catalog: string[];
+  lockedConstraints?: string;
 }) {
   const catalog = input.catalog.slice(0, 80).join(", ");
   return `Build a ${input.daysPerWeek}-day weekly split (${input.duration} minutes per session).
@@ -27,7 +28,7 @@ Experience: ${input.experience}
 Equipment: ${input.equipment.join(", ") || "full gym"}
 Focus muscles: ${input.focusMuscles.join(", ") || "balanced physique"}
 Preferences: ${input.preferences || "none"}
-
+${input.lockedConstraints ? `\nLOCKED CONSTRAINTS (do NOT change or overwrite these days/exercises):\n${input.lockedConstraints}\n` : ""}
 Allowed exercise names (use these exact names when possible):
 ${catalog || "(catalog empty — use well-known gym exercise names)"}
 

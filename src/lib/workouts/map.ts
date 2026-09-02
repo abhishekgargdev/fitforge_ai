@@ -49,6 +49,7 @@ export function toSplitDto(plan: {
       day: day.dayName,
       focus: day.focus || "",
       isRestDay: Boolean(day.isRestDay),
+      locked: Boolean((day as { locked?: boolean }).locked),
       workout: day.isRestDay || !day.workout
         ? undefined
         : {
@@ -71,6 +72,7 @@ export function toSplitDto(plan: {
               difficulty: ex.difficulty,
               instructions: ex.instructions,
               tips: ex.tips,
+              locked: Boolean((ex as { locked?: boolean }).locked),
             })),
           },
     })),

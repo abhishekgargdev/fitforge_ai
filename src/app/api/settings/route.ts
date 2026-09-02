@@ -40,12 +40,19 @@ export async function PUT(request: Request) {
         theme: body.theme,
         aiPersona: body.aiPersona,
         audioChimes: body.audioChimes,
+        planMode: body.planMode,
       },
       { returnDocument: "after" }
     );
     if (!profile) {
       return fail("Profile not found.", 404, "PROFILE_NOT_FOUND");
     }
+
+    const { WorkoutPlanModel } = await import("@/models/WorkoutPlan");
+    await WorkoutPlanModel.updateMany(
+      { userId: session.user._id, isActive: true },
+      { planMode: body.planMode }
+    );
 
     if (body.restartOnboarding) {
       session.user.onboardingComplete = false;

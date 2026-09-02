@@ -5,12 +5,13 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { CompletedWorkoutSummary } from '@/types';
-import { Sparkles, Trophy, Flame, Clock, Dumbbell, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Trophy, Flame, Clock, Dumbbell, TrendingUp, CheckCircle2, HeartPulse } from 'lucide-react';
 
 interface WorkoutCompletionModalProps {
   summary: CompletedWorkoutSummary;
   onClose: () => void;
   onViewSummary: () => void;
+  onGoToRecovery?: () => void;
 }
 
 export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
@@ -106,7 +107,7 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
         </div>
 
         {/* AI Session Summary Card */}
-        <div className="bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/30 p-4 rounded-2xl mb-6">
+        <div className="bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/30 p-4 rounded-2xl mb-4">
           <div className="flex items-center gap-2 text-xs font-bold text-[#B8F34A] mb-1.5">
             <Sparkles className="w-3.5 h-3.5" />
             FitForge AI Session Evaluation
@@ -114,6 +115,28 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
           <p className="text-xs sm:text-sm text-[#F5F7F2] leading-relaxed">
             {summary.aiSummary}
           </p>
+        </div>
+
+        {/* Your Recovery for Today Section */}
+        <div className="p-4 rounded-2xl bg-[#0B0D0F]/80 border border-[#252B30] mb-6 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#5DA9FF]/15 text-[#5DA9FF] flex items-center justify-center shrink-0">
+              <HeartPulse className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-white block">Your recovery for today</span>
+              <span className="text-[11px] text-[#9AA3A0]">Contrast shower, static stretching & hydration protocol ready</span>
+            </div>
+          </div>
+          {onGoToRecovery && (
+            <button
+              type="button"
+              onClick={onGoToRecovery}
+              className="text-[#B8F34A] font-bold text-[11px] hover:underline shrink-0"
+            >
+              Open Protocol →
+            </button>
+          )}
         </div>
 
         {/* Buttons */}

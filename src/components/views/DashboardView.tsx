@@ -437,6 +437,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
+      {/* Recovery Protocol Quick Card */}
+      <section className="bg-[#12161A] p-6 rounded-3xl border border-[#252B30] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#B8F34A]/10 border border-[#B8F34A]/30 text-[#B8F34A] flex items-center justify-center shrink-0">
+            <HeartPulse className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-base text-white">Daily Recovery & Regeneration Protocol</h3>
+              <OriginBadge origin="AI_RECOMMENDATION" />
+            </div>
+            <p className="text-xs text-[#9AA3A0] mt-0.5">
+              Hydration, contrast therapy, static stretching, and sleep optimization guidance.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => onNavigate('recovery')}
+          className="px-4 py-2.5 rounded-xl bg-[#181D22] border border-[#252B30] hover:border-[#B8F34A] text-[#F5F7F2] hover:text-white text-xs font-bold flex items-center gap-2 transition-all shrink-0"
+        >
+          View Today's Recovery <ChevronRight className="w-4 h-4 text-[#B8F34A]" />
+        </button>
+      </section>
+
       {/* AI Fitness Insight & Progress Trend Section */}
       <section className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* AI Fitness Insight (3 cols) */}

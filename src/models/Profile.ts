@@ -24,6 +24,11 @@ const profileSchema = new Schema(
       default: "scientific",
     },
     audioChimes: { type: Boolean, default: true },
+    planMode: {
+      type: String,
+      enum: ["ai", "manual"],
+      default: "ai",
+    },
   },
   { timestamps: true, collection: "profiles" }
 );

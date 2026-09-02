@@ -6,6 +6,7 @@ export const TAB_PATHS: Record<Exclude<ActiveNavTab, "active_workout">, string> 
   exercises: "/exercises",
   nutrition: "/nutrition",
   progress: "/progress",
+  recovery: "/recovery",
   ai_coach: "/ai-coach",
   profile: "/profile",
   settings: "/settings",
@@ -24,6 +25,7 @@ export function tabFromPath(pathname: string): ActiveNavTab {
   if (pathname.startsWith("/exercises")) return "exercises";
   if (pathname.startsWith("/nutrition")) return "nutrition";
   if (pathname.startsWith("/progress")) return "progress";
+  if (pathname.startsWith("/recovery")) return "recovery";
   if (pathname.startsWith("/ai-coach")) return "ai_coach";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/settings")) return "settings";

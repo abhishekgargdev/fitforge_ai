@@ -17,6 +17,7 @@ import {
   Flame,
   Compass,
   LogOut,
+  HeartPulse,
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -104,6 +105,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   { id: 'exercises' as ActiveNavTab, label: 'Exercise Library', icon: BookOpen },
                   { id: 'nutrition' as ActiveNavTab, label: 'Nutrition & Diary', icon: Apple },
                   { id: 'progress' as ActiveNavTab, label: 'Progress & Scans', icon: TrendingUp },
+                  { id: 'recovery' as ActiveNavTab, label: 'Recovery Protocols', icon: HeartPulse },
                   { id: 'ai_coach' as ActiveNavTab, label: 'FitForge AI Coach', icon: Bot, highlight: true },
                   { id: 'profile' as ActiveNavTab, label: 'Profile Settings', icon: User },
                   { id: 'settings' as ActiveNavTab, label: 'System & Preferences', icon: Settings },

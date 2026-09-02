@@ -18,6 +18,9 @@ import {
   CheckCircle2,
   Trophy,
   History,
+  Lock,
+  Unlock,
+  Info,
 } from 'lucide-react';
 
 interface WorkoutsViewProps {
@@ -34,6 +37,7 @@ interface WorkoutsViewProps {
   onStartWorkout: (workout: WorkoutTemplate, dayIndex: number) => void;
   onOpenAIPlanner: () => void;
   onNavigate: (tab: ActiveNavTab) => void;
+  onRefreshSplit?: () => void;
 }
 
 export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
@@ -43,15 +47,49 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   onStartWorkout,
   onOpenAIPlanner,
   onNavigate,
+  onRefreshSplit,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [locking, setLocking] = useState(false);
 
   const firstTrainingIndex = currentSplit.days.findIndex((day) => !day.isRestDay && day.workout);
   const todayIndex = firstTrainingIndex >= 0 ? firstTrainingIndex : 0;
   const todayWorkout = currentSplit.days[todayIndex]?.workout;
+  const isManualMode = currentSplit.planMode === 'manual';
+
+  const handleToggleLock = async (dayName: string, exerciseId?: string, currentLocked?: boolean) => {
+    if (!currentSplit.id) return;
+    setLocking(true);
+    try {
+      await fetch(`/api/workout-plans/${currentSplit.id}/lock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayName,
+          exerciseId,
+          locked: !currentLocked,
+        }),
+      });
+      if (onRefreshSplit) onRefreshSplit();
+    } catch (err) {
+      console.error('Failed to toggle lock:', err);
+    } finally {
+      setLocking(false);
+    }
+  };
 
   return (
     <div id="workouts-view" className="space-y-6 animate-in fade-in">
+      {/* Manual Mode Explanation Banner */}
+      {isManualMode && (
+        <div className="bg-[#5DA9FF]/10 border border-[#5DA9FF]/30 rounded-2xl p-4 flex items-center gap-3 text-xs text-[#5DA9FF]">
+          <Info className="w-5 h-5 shrink-0" />
+          <span>
+            <strong>Manual Mode Active:</strong> AI won't change your plan while manual mode is on — switch back in Settings to let it adapt again.
+          </span>
+        </div>
+      )}
+
       {/* Top Header & CTAs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#12161A] border border-[#252B30] rounded-2xl p-5 md:p-6">
         <div>
@@ -59,23 +97,34 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white">
               Workout Planner & Engine
             </h2>
-            <OriginBadge origin="AI_RECOMMENDATION" />
+            <OriginBadge origin={isManualMode ? "MEASURED" : "AI_RECOMMENDATION"} />
           </div>
           <p className="text-xs text-[#9AA3A0] mt-1">
-            Active Split: <strong className="text-white">{currentSplit.title}</strong> • Periodized for maximum hypertrophy
+            Active Split: <strong className="text-white">{currentSplit.title}</strong> • {isManualMode ? "Manual Control Mode" : "Periodized for maximum hypertrophy"}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            id="btn-workouts-ai-planner"
-            type="button"
-            onClick={onOpenAIPlanner}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B8F34A]/20 to-[#5DA9FF]/20 border border-[#B8F34A]/40 text-[#F5F7F2] hover:border-[#B8F34A] text-xs font-bold flex items-center gap-2 transition-all shadow-sm group"
-          >
-            <Sparkles className="w-4 h-4 text-[#B8F34A] group-hover:rotate-12 transition-transform" />
-            Generate with AI
-          </button>
+          {!isManualMode ? (
+            <button
+              id="btn-workouts-ai-planner"
+              type="button"
+              onClick={onOpenAIPlanner}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B8F34A]/20 to-[#5DA9FF]/20 border border-[#B8F34A]/40 text-[#F5F7F2] hover:border-[#B8F34A] text-xs font-bold flex items-center gap-2 transition-all shadow-sm group"
+            >
+              <Sparkles className="w-4 h-4 text-[#B8F34A] group-hover:rotate-12 transition-transform" />
+              Generate with AI
+            </button>
+          ) : (
+            <button
+              disabled
+              title="Switch to AI Adaptive mode in Settings to enable AI generation"
+              className="px-4 py-2.5 rounded-xl bg-[#181D22] border border-[#252B30] text-[#9AA3A0]/60 text-xs font-bold flex items-center gap-2 cursor-not-allowed opacity-60"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Manual Mode Active
+            </button>
+          )}
           <button
             id="btn-workouts-start-today"
             type="button"
@@ -95,19 +144,20 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             <Calendar className="w-4 h-4 text-[#B8F34A]" />
             Weekly Schedule ({currentSplit.title})
           </h3>
-          <span className="text-xs text-[#9AA3A0]">Click a day to preview schedule</span>
+          <span className="text-xs text-[#9AA3A0]">Click day to inspect or toggle lock</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {currentSplit.days.map((dayItem, idx) => {
             const isSelected = selectedDayIndex === idx;
             const isRest = dayItem.isRestDay;
+            const isDayLocked = Boolean(dayItem.locked);
 
             return (
               <div
                 key={idx}
                 onClick={() => setSelectedDayIndex(idx)}
-                className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                className={`p-3 rounded-xl border text-left cursor-pointer transition-all relative group ${
                   isSelected
                     ? 'bg-[#181D22] border-[#B8F34A] shadow-md ring-1 ring-[#B8F34A]/30'
                     : isRest
@@ -117,9 +167,19 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               >
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-bold text-white">{dayItem.dayName ?? dayItem.day}</span>
-                  {idx === todayIndex && (
-                    <span className="w-2 h-2 rounded-full bg-[#B8F34A] animate-pulse" />
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleLock(dayItem.dayName, undefined, isDayLocked);
+                    }}
+                    className={`p-1 rounded hover:bg-white/10 transition-colors ${
+                      isDayLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 group-hover:opacity-100'
+                    }`}
+                    title={isDayLocked ? 'Day locked against AI changes' : 'Lock day'}
+                  >
+                    {isDayLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
 
                 {isRest ? (
@@ -177,29 +237,53 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
 
             {/* Exercises Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {currentSplit.days[selectedDayIndex].workout?.exercises.map((ex, exIdx) => (
-                <div
-                  key={exIdx}
-                  className="p-3 rounded-xl bg-[#181D22] border border-[#252B30] flex items-start justify-between text-xs"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] text-[#B8F34A] font-bold flex items-center justify-center shrink-0 text-[11px] mt-0.5">
-                      {exIdx + 1}
-                    </span>
-                    <div>
-                      <span className="font-bold text-white block">{ex.exerciseName}</span>
-                      <span className="text-[11px] text-[#9AA3A0]">
-                        {ex.sets} Sets × {ex.reps} Reps • {ex.restSeconds}s rest
+              {currentSplit.days[selectedDayIndex].workout?.exercises.map((ex, exIdx) => {
+                const isExLocked = Boolean(ex.locked);
+                const currentDayName = currentSplit.days[selectedDayIndex].dayName;
+                return (
+                  <div
+                    key={exIdx}
+                    className={`p-3 rounded-xl border flex items-start justify-between text-xs transition-all ${
+                      isExLocked ? 'bg-[#181D22] border-[#F5B942]/40' : 'bg-[#181D22] border-[#252B30]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] text-[#B8F34A] font-bold flex items-center justify-center shrink-0 text-[11px] mt-0.5">
+                        {exIdx + 1}
                       </span>
-                      {ex.aiNote && (
-                        <span className="text-[10px] text-[#B8F34A] block mt-0.5">
-                          💡 {ex.aiNote}
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white block">{ex.exerciseName}</span>
+                          {isExLocked && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#F5B942]/15 text-[#F5B942] font-semibold">
+                              Locked
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[#9AA3A0]">
+                          {ex.sets} Sets × {ex.reps} Reps • {ex.restSeconds}s rest
                         </span>
-                      )}
+                        {ex.aiNote && (
+                          <span className="text-[10px] text-[#B8F34A] block mt-0.5">
+                            💡 {ex.aiNote}
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}
+                      className={`p-1.5 rounded hover:bg-white/10 transition-colors shrink-0 ${
+                        isExLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 hover:opacity-100'
+                      }`}
+                      title={isExLocked ? 'Exercise locked against AI changes' : 'Lock exercise'}
+                    >
+                      {isExLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -15,6 +15,7 @@ const planExerciseSchema = new Schema(
     difficulty: { type: String, default: "Intermediate" },
     instructions: { type: [String], default: [] },
     tips: { type: [String], default: [] },
+    locked: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -39,6 +40,7 @@ const splitDaySchema = new Schema(
     dayName: { type: String, required: true },
     focus: { type: String, default: "" },
     isRestDay: { type: Boolean, default: false },
+    locked: { type: Boolean, default: false },
     workout: { type: dayWorkoutSchema, default: undefined },
   },
   { _id: false }

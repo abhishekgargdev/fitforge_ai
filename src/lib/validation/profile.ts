@@ -14,5 +14,6 @@ export const updateSettingsSchema = z.object({
   theme: z.enum(["dark", "light", "system"]),
   aiPersona: z.enum(["scientific", "motivational", "strict"]),
   audioChimes: z.boolean(),
+  planMode: z.enum(["ai", "manual"]).optional().default("ai"),
   restartOnboarding: z.boolean().optional(),
 });

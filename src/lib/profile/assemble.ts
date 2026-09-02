@@ -20,6 +20,7 @@ type LeanProfile = {
   theme?: UserProfile["theme"];
   aiPersona?: UserSettings["aiPersona"];
   audioChimes?: boolean;
+  planMode?: "ai" | "manual";
 };
 
 type LeanGoal = {
@@ -56,6 +57,7 @@ export function assembleUserProfile(
     allergies: profile.allergies ?? "",
     unitSystem: profile.unitSystem ?? "metric",
     theme: profile.theme ?? "dark",
+    planMode: profile.planMode ?? "ai",
   };
 }
 
@@ -65,6 +67,7 @@ export function assembleUserSettings(profile: LeanProfile): UserSettings {
     theme: profile.theme ?? "dark",
     aiPersona: profile.aiPersona ?? "scientific",
     audioChimes: profile.audioChimes ?? true,
+    planMode: profile.planMode ?? "ai",
   };
 }
 

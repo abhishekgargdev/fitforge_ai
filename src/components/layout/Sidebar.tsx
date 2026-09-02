@@ -17,6 +17,7 @@ import {
   Flame,
   LogOut,
   Compass,
+  HeartPulse,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'exercises' as ActiveNavTab, label: 'Exercises', icon: BookOpen },
     { id: 'nutrition' as ActiveNavTab, label: 'Nutrition', icon: Apple },
     { id: 'progress' as ActiveNavTab, label: 'Progress', icon: TrendingUp },
+    { id: 'recovery' as ActiveNavTab, label: 'Recovery', icon: HeartPulse },
     { id: 'ai_coach' as ActiveNavTab, label: 'AI Coach', icon: Bot, highlight: true },
   ];
 
