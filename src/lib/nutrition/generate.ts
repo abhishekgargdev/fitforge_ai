@@ -1,6 +1,7 @@
 import { generateStructuredJson } from "@/lib/ai/orchestrator";
 import { nutritionPlanSystemPrompt, nutritionPlanUserPrompt } from "@/lib/ai/prompts/nutrition-plan";
 import { aiNutritionPlanSchema } from "@/lib/ai/schemas/nutrition-plan";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { resolveFoodByName, toFoodDto } from "@/lib/nutrition/cache";
 import { NutritionGoalModel } from "@/models/NutritionGoal";
 import type { z } from "zod";
@@ -9,7 +10,8 @@ import type { aiNutritionInputSchema } from "@/lib/validation/nutrition";
 type Input = z.infer<typeof aiNutritionInputSchema>;
 
 export async function generateNutritionPlan(userId: unknown, input: Input) {
-  const proposed = await generateStructuredJson({
+  try {
+    const proposed = await generateStructuredJson({
     system: nutritionPlanSystemPrompt(),
     user: nutritionPlanUserPrompt({
       goal: input.goal,
@@ -83,6 +85,7 @@ export async function generateNutritionPlan(userId: unknown, input: Input) {
     { upsert: true }
   );
 
+  await recordAiUsage({ userId, feature: "nutrition-plan", ok: true });
   return {
     planTitle: proposed.planTitle,
     dailyCalories: Math.round(totals.calories),
@@ -93,6 +96,10 @@ export async function generateNutritionPlan(userId: unknown, input: Input) {
     meals,
     groceryList: proposed.groceryList,
   };
+  } catch (error) {
+    await recordAiUsage({ userId, feature: "nutrition-plan", ok: false });
+    throw error;
+  }
 }
 
 function round1(value: number) {

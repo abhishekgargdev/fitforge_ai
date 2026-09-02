@@ -4,6 +4,7 @@ import {
   progressAnalysisUserPrompt,
 } from "@/lib/ai/prompts/progress-analysis";
 import { progressAnalysisSchema } from "@/lib/ai/schemas/progress-analysis";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { bmi } from "@/lib/calculations";
 import { buildProgressSummary, measurementsInRange } from "@/lib/progress/series";
 import type { ProgressRange } from "@/lib/progress/types";
@@ -32,7 +33,8 @@ export async function generateProgressAnalysis(userId: unknown, range: ProgressR
         ? "BMI is low. Do not diagnose. Suggest seeing a healthcare professional."
         : "";
 
-  const proposed = await generateStructuredJson({
+  try {
+    const proposed = await generateStructuredJson({
     system: progressAnalysisSystemPrompt(),
     user: progressAnalysisUserPrompt({
       goal: goal?.fitnessGoal || "general_health",
@@ -50,9 +52,14 @@ export async function generateProgressAnalysis(userId: unknown, range: ProgressR
     schema: progressAnalysisSchema,
   });
 
+  await recordAiUsage({ userId, feature: "progress-analysis", ok: true });
   return {
     ...proposed,
     recompScore: `${summary.recompScore} / 100`,
     range,
   };
+  } catch (error) {
+    await recordAiUsage({ userId, feature: "progress-analysis", ok: false });
+    throw error;
+  }
 }

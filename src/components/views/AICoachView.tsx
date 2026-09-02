@@ -1,41 +1,32 @@
 'use client';
 
-// Fields used: userProfile.name; AIChatMessage.id, sender, text, timestamp, dataOrigin; initialAIChatMessages fixture.
+// Fields used: userProfile.name; AIChatMessage.id, sender, text, timestamp, dataOrigin;
+// conversation list/id; suggested prompt chips; typing indicator.
 
 import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile, AIChatMessage } from '@/types';
-import { initialAIChatMessages } from '@/data/mockData';
 import { OriginBadge } from '../common/OriginBadge';
-import {
-  Bot,
-  Sparkles,
-  Send,
-  User,
-  Trash2,
-  HelpCircle,
-  Dumbbell,
-  Apple,
-  Zap,
-  Flame,
-  ArrowRight,
-} from 'lucide-react';
+import { Bot, Sparkles, Send, Trash2 } from 'lucide-react';
 
 interface AICoachViewProps {
   userProfile: UserProfile;
 }
 
+const defaultPrompts = [
+  'How do I break through a bench press plateau?',
+  'What should I eat 1 hour before a heavy leg day?',
+  'How should I adjust macros on active rest days?',
+  'Explain the difference between RPE 8 and RPE 9.5 for hypertrophy.',
+];
+
 export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
-  const [messages, setMessages] = useState<AIChatMessage[]>(initialAIChatMessages);
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [messages, setMessages] = useState<AIChatMessage[]>([]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>(defaultPrompts);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const quickPrompts = [
-    'How do I break through a bench press plateau?',
-    'What should I eat 1 hour before a heavy leg day?',
-    'How should I adjust macros on active rest days?',
-    'Explain the difference between RPE 8 and RPE 9.5 for hypertrophy.',
-  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,6 +35,29 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    fetch('/api/ai/conversations')
+      .then((res) => res.json())
+      .then((json) => {
+        const latest = json.data?.items?.[0];
+        if (!latest) {
+          setMessages([
+            {
+              id: 'msg-init',
+              sender: 'ai',
+              text: `Hi ${userProfile.name.split(' ')[0]}. Ask about training, nutrition timing, or recovery. I will use your logged scans, food log, and workouts — I will not invent measurements.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              dataOrigin: 'AI_RECOMMENDATION',
+            },
+          ]);
+          return;
+        }
+        setConversationId(latest.id);
+        setMessages(latest.messages || []);
+      })
+      .catch(() => undefined);
+  }, [userProfile.name]);
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || inputValue;
@@ -59,56 +73,42 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
+    setErrorMsg('');
 
     try {
-      // Build conversation history payload
-      const historyPayload = messages.map((m) => ({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }],
-      }));
-
-      const res = await fetch('/api/ai/coach', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          userProfile,
-          conversationHistory: historyPayload,
+          conversationId,
         }),
       });
-
-      if (!res.ok) throw new Error('coach unavailable');
-      const data = await res.json();
-      const aiReply: AIChatMessage = {
-        id: `msg-ai-${Date.now()}`,
-        sender: 'ai',
-        text: data.reply || "I've analyzed your question based on biomechanics and training volume.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        dataOrigin: 'AI_RECOMMENDATION',
-      };
-
-      setMessages((prev) => [...prev, aiReply]);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Coach unavailable');
+      setConversationId(json.data.conversationId);
+      setMessages((prev) => [...prev, json.data.message]);
+      if (json.data.suggestedPrompts?.length) {
+        setSuggestedPrompts(json.data.suggestedPrompts);
+      }
     } catch (e) {
-      // Fallback
-      const aiReply: AIChatMessage = {
-        id: `msg-ai-${Date.now()}`,
-        sender: 'ai',
-        text: `Based on your current body composition (80.4 kg, 22.4% body fat) and 4-day hypertrophy split, ensuring adequate mechanical tension and 1.8g–2.0g protein/kg is key. Stay disciplined with progressive overload and prioritize eccentric control.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        dataOrigin: 'AI_RECOMMENDATION',
-      };
-      setMessages((prev) => [...prev, aiReply]);
+      setErrorMsg(e instanceof Error ? e.message : 'Unable to reach the coach.');
     } finally {
       setIsTyping(false);
     }
   };
 
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
+    if (conversationId) {
+      await fetch(`/api/ai/conversations/${conversationId}`, { method: 'DELETE' });
+    }
+    setConversationId(undefined);
+    setSuggestedPrompts(defaultPrompts);
     setMessages([
       {
         id: 'msg-init',
         sender: 'ai',
-        text: `FitForge AI Coach memory refreshed. Ask me anything about your biomechanics, nutrition timing, recovery, or exercise execution!`,
+        text: `FitForge AI Coach memory refreshed. Ask about biomechanics, nutrition timing, recovery, or exercise execution using your logged data.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         dataOrigin: 'AI_RECOMMENDATION',
       },
@@ -120,7 +120,6 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
       id="ai-coach-view"
       className="bg-[#12161A] border border-[#252B30] rounded-2xl flex flex-col h-[calc(100vh-140px)] min-h-[580px] animate-in fade-in"
     >
-      {/* Top Header */}
       <div className="p-4 md:p-5 border-b border-[#252B30] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#B8F34A] to-[#8EE020] text-[#0B0D0F] flex items-center justify-center shadow-[0_0_15px_rgba(184,243,74,0.3)]">
@@ -143,7 +142,7 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
           <OriginBadge origin="AI_RECOMMENDATION" />
           <button
             type="button"
-            onClick={handleClearHistory}
+            onClick={() => void handleClearHistory()}
             className="p-2 rounded-xl bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white"
             title="Clear Chat History"
           >
@@ -152,11 +151,9 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
         </div>
       </div>
 
-      {/* Messages Scroll Area */}
       <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar space-y-4">
         {messages.map((msg) => {
           const isAI = msg.sender === 'ai';
-
           return (
             <div
               key={msg.id}
@@ -215,17 +212,17 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
           </div>
         )}
 
+        {errorMsg ? <p className="text-xs text-[#F05D5E]">{errorMsg}</p> : null}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Quick Prompts */}
       <div className="px-4 py-2 bg-[#0B0D0F]/40 border-t border-[#252B30] flex items-center gap-2 overflow-x-auto custom-scrollbar">
         <span className="text-[10px] uppercase font-bold text-[#9AA3A0] shrink-0">Suggested:</span>
-        {quickPrompts.map((p, idx) => (
+        {suggestedPrompts.map((p, idx) => (
           <button
             key={idx}
             type="button"
-            onClick={() => handleSend(p)}
+            onClick={() => void handleSend(p)}
             className="px-3 py-1 rounded-xl bg-[#181D22] border border-[#252B30] hover:border-[#B8F34A]/50 text-[#9AA3A0] hover:text-white text-xs whitespace-nowrap transition-all"
           >
             {p}
@@ -233,12 +230,11 @@ export const AICoachView: React.FC<AICoachViewProps> = ({ userProfile }) => {
         ))}
       </div>
 
-      {/* Input Box */}
       <div className="p-3 md:p-4 bg-[#12161A] border-t border-[#252B30]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSend();
+            void handleSend();
           }}
           className="flex items-center gap-2"
         >

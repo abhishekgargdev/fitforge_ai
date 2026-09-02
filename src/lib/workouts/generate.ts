@@ -1,6 +1,7 @@
 import { generateStructuredJson } from "@/lib/ai/orchestrator";
 import { workoutPlanSystemPrompt, workoutPlanUserPrompt } from "@/lib/ai/prompts/workout-plan";
 import { aiWorkoutPlanSchema } from "@/lib/ai/schemas/workout-plan";
+import { recordAiUsage } from "@/lib/ai/usage";
 import { catalogNamesForPlanner, resolvePlanDays } from "@/lib/workouts/resolve";
 import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 
@@ -19,7 +20,9 @@ export async function generateAndSaveWorkoutPlan(
   input: PlannerInput
 ) {
   const catalog = await catalogNamesForPlanner(input.focusMuscles);
-  const aiPlan = await generateStructuredJson({
+  let aiPlan;
+  try {
+    aiPlan = await generateStructuredJson({
     system: workoutPlanSystemPrompt(),
     user: workoutPlanUserPrompt({
       ...input,
@@ -28,6 +31,11 @@ export async function generateAndSaveWorkoutPlan(
     }),
     schema: aiWorkoutPlanSchema,
   });
+    await recordAiUsage({ userId, feature: "workout-plan", ok: true });
+  } catch (error) {
+    await recordAiUsage({ userId, feature: "workout-plan", ok: false });
+    throw error;
+  }
 
   const resolved = await resolvePlanDays(aiPlan);
   if (resolved.trainingDays === 0) {

@@ -1,33 +1,72 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Header } from "@/components/layout/Header";
 import { FoodLoggerModal } from "@/components/modals/FoodLoggerModal";
-import { AIWorkoutPlannerModal } from "@/components/modals/AIWorkoutPlannerModal";
-import { AINutritionPlannerModal } from "@/components/modals/AINutritionPlannerModal";
-import { AIAnalysisModal } from "@/components/modals/AIAnalysisModal";
-import { WorkoutCompletionModal } from "@/components/modals/WorkoutCompletionModal";
-import { useMockApp } from "@/components/layout/MockAppProvider";
-import { tabFromPath } from "@/lib/navigation";
-import type { ReactNode } from "react";
+import { tabFromPath, pathForTab } from "@/lib/navigation";
+import type { NotificationItem, UserProfile } from "@/types";
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const app = useMockApp();
   const activeTab = tabFromPath(pathname);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [foodLoggerOpen, setFoodLoggerOpen] = useState(false);
+  const [notifications] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data?.profile) {
+          setProfile(json.data.profile);
+          setIsDark(json.data.profile.theme !== "light");
+        }
+      })
+      .catch(() => undefined);
+  }, [pathname]);
+
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   };
-  const hideChrome = pathname.startsWith("/onboarding");
 
+  const hideChrome = pathname.startsWith("/onboarding");
   if (hideChrome) {
     return <>{children}</>;
   }
+
+  const navigateTab = (tab: Parameters<typeof pathForTab>[0]) => {
+    router.push(pathForTab(tab));
+  };
+
+  const headerProfile = profile || {
+    name: "Athlete",
+    email: "",
+    age: 0,
+    gender: "other" as const,
+    heightCm: 0,
+    weightKg: 0,
+    bodyFatPercentage: 0,
+    fitnessGoal: "general_health" as const,
+    experienceLevel: "beginner" as const,
+    trainingDaysPerWeek: 0,
+    workoutDurationMinutes: 0,
+    availableEquipment: [],
+    focusMuscles: [],
+    dietPreference: "other" as const,
+    mealsPerDay: 3,
+    foodPreferences: "",
+    allergies: "",
+    unitSystem: "metric" as const,
+    theme: "dark" as const,
+  };
 
   return (
     <div
@@ -36,10 +75,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
     >
       <Sidebar
         activeTab={activeTab}
-        onSelectTab={app.navigateTab}
-        userProfile={app.userProfile}
-        isCollapsed={app.sidebarCollapsed}
-        onToggleCollapse={() => app.setSidebarCollapsed(!app.sidebarCollapsed)}
+        onSelectTab={navigateTab}
+        userProfile={headerProfile}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onGoToLanding={() => router.push("/")}
         onSignOut={signOut}
       />
@@ -47,71 +86,34 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 min-h-screen pb-20 md:pb-8">
         <MobileNav
           activeTab={activeTab}
-          onSelectTab={app.navigateTab}
-          userProfile={app.userProfile}
+          onSelectTab={navigateTab}
+          userProfile={headerProfile}
           onGoToLanding={() => router.push("/")}
           onSignOut={signOut}
         />
 
         <Header
-          userProfile={app.userProfile}
-          notifications={app.notifications}
-          onMarkAllNotificationsRead={app.markAllNotificationsRead}
-          onClearNotification={app.clearNotification}
-          onNavigate={app.navigateTab}
-          onToggleTheme={app.toggleTheme}
-          isDark={app.isDark}
+          userProfile={headerProfile}
+          notifications={notifications}
+          onMarkAllNotificationsRead={() => undefined}
+          onClearNotification={() => undefined}
+          onNavigate={navigateTab}
+          onToggleTheme={() => setIsDark((value) => !value)}
+          isDark={isDark}
           onOpenQuickAction={(action) => {
-            if (action === "ai_coach") app.navigateTab("ai_coach");
-            if (action === "workout") app.startWorkout(app.todayWorkout);
-            if (action === "nutrition") app.openFoodLogger();
+            if (action === "ai_coach") navigateTab("ai_coach");
+            if (action === "workout") navigateTab("workouts");
+            if (action === "nutrition") setFoodLoggerOpen(true);
           }}
         />
 
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
       </div>
 
-      {app.foodLoggerOpen && (
+      {foodLoggerOpen && (
         <FoodLoggerModal
-          defaultMeal={app.foodLoggerMeal}
-          onClose={app.closeFoodLogger}
-          onLogFood={app.logFood}
-        />
-      )}
-
-      {app.aiWorkoutPlannerOpen && (
-        <AIWorkoutPlannerModal
-          userProfile={app.userProfile}
-          onClose={() => app.setAiWorkoutPlannerOpen(false)}
-          onApplyGeneratedPlan={app.applyAIWorkoutPlan}
-        />
-      )}
-
-      {app.aiNutritionPlannerOpen && (
-        <AINutritionPlannerModal
-          userProfile={app.userProfile}
-          onClose={() => app.setAiNutritionPlannerOpen(false)}
-          onApplyPlan={app.applyAINutritionPlan}
-        />
-      )}
-
-      {app.aiAnalysisOpen && (
-        <AIAnalysisModal
-          userProfile={app.userProfile}
-          metrics={app.progressHistory}
-          composition={app.bodyComposition}
-          onClose={() => app.setAiAnalysisOpen(false)}
-        />
-      )}
-
-      {app.completedWorkoutSummary && (
-        <WorkoutCompletionModal
-          summary={app.completedWorkoutSummary}
-          onClose={app.closeCompletion}
-          onViewSummary={() => {
-            app.closeCompletion();
-            app.navigateTab("workouts");
-          }}
+          onClose={() => setFoodLoggerOpen(false)}
+          onLogFood={() => setFoodLoggerOpen(false)}
         />
       )}
     </div>

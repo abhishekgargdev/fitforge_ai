@@ -7,12 +7,11 @@
 // latestComposition (via BodySilhouetteVisualizer): overall.visceralFat, overall.bodyAge, overall.restingMetabolismKcal,
 // trunk.fatPercentage, trunk.musclePercentage, arms.fatPercentage, arms.musclePercentage, legs.fatPercentage, legs.musclePercentage.
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   UserProfile,
   LoggedMealEntry,
   WorkoutTemplate,
-  MetricEntry,
   BodyCompositionDetails,
   ActiveNavTab,
 } from '@/types';
@@ -39,10 +38,34 @@ import {
 
 interface DashboardViewProps {
   userProfile: UserProfile;
+  metrics: {
+    weightKg: number;
+    weightDelta: number;
+    weightProgressPct: number;
+    targetWeightKg: number;
+    bodyFatPercentage: number;
+    fatDelta: number;
+    bmi: number;
+    bmiLabel: string;
+    bodyAge: number;
+    bodyAgeDelta: number;
+  };
   loggedMeals: LoggedMealEntry[];
+  nutritionGoals: {
+    targetCaloriesKcal: number;
+    targetProteinGrams: number;
+    targetCarbsGrams: number;
+    targetFatGrams: number;
+  };
   todayWorkout: WorkoutTemplate;
-  progressHistory: MetricEntry[];
+  isRestDay?: boolean;
+  workoutFocus?: string;
+  chartSeries: Array<{ label: string; value: number }>;
+  range: "1m" | "3m" | "6m" | "1y" | "all";
+  onRangeChange: (range: "1m" | "3m" | "6m" | "1y" | "all") => void;
   latestComposition: BodyCompositionDetails;
+  previousComposition?: BodyCompositionDetails | null;
+  insight: string;
   onNavigate: (tab: ActiveNavTab) => void;
   onStartWorkout: (workout: WorkoutTemplate) => void;
   onOpenFoodLogger: () => void;
@@ -52,51 +75,47 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   userProfile,
+  metrics,
   loggedMeals,
+  nutritionGoals,
   todayWorkout,
-  progressHistory,
+  isRestDay,
+  workoutFocus,
+  chartSeries,
+  range,
+  onRangeChange,
   latestComposition,
+  previousComposition,
+  insight,
   onNavigate,
   onStartWorkout,
   onOpenFoodLogger,
   onOpenAIPlanner,
   onOpenAIAnalysis,
 }) => {
-  const [activeChartTab, setActiveChartTab] = useState<'weight' | 'fat' | 'muscle' | 'bmi'>('weight');
-  const [timeFilter, setTimeFilter] = useState<'1M' | '3M' | '6M' | '1Y' | 'All'>('3M');
-
-  // Compute daily totals
   const totalCaloriesLogged = loggedMeals.reduce((acc, curr) => acc + curr.caloriesKcal, 0);
   const totalProteinLogged = loggedMeals.reduce((acc, curr) => acc + curr.proteinGrams, 0);
   const totalCarbsLogged = loggedMeals.reduce((acc, curr) => acc + curr.carbsGrams, 0);
   const totalFatLogged = loggedMeals.reduce((acc, curr) => acc + curr.fatGrams, 0);
 
-  const targetCalories = 2200;
-  const targetProtein = 160;
-  const targetCarbs = 220;
-  const targetFat = 70;
+  const targetCalories = Math.max(1, nutritionGoals.targetCaloriesKcal);
+  const targetProtein = Math.max(1, nutritionGoals.targetProteinGrams);
+  const targetCarbs = Math.max(1, nutritionGoals.targetCarbsGrams);
+  const targetFat = Math.max(1, nutritionGoals.targetFatGrams);
 
-  // Calorie ring metrics
-  const circumference = 2 * Math.PI * 45; // ~282.74
+  const circumference = 2 * Math.PI * 45;
   const caloriePercent = Math.min(totalCaloriesLogged / targetCalories, 1);
   const strokeDashoffset = circumference * (1 - caloriePercent);
 
-  // Chart data extraction based on active tab
-  const getChartPoints = () => {
-    return progressHistory.map((item, idx) => {
-      let val = item.weightKg;
-      if (activeChartTab === 'fat') val = item.bodyFatPercentage;
-      if (activeChartTab === 'muscle') val = item.muscleMassKg;
-      if (activeChartTab === 'bmi') val = item.bmi;
-      return { label: item.date, val, index: idx };
-    });
-  };
-
-  const chartPoints = getChartPoints();
+  const chartPoints = chartSeries.map((item, idx) => ({
+    label: item.label,
+    val: item.value,
+    index: idx,
+  }));
   const values = chartPoints.map((p) => p.val);
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
-  const range = maxVal - minVal || 1;
+  const minVal = values.length ? Math.min(...values) : 0;
+  const maxVal = values.length ? Math.max(...values) : 1;
+  const valueRange = maxVal - minVal || 1;
 
   // SVG Chart path calculation
   const svgWidth = 600;
@@ -109,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           .map((p, idx) => {
             const divisor = Math.max(chartPoints.length - 1, 1);
             const x = padding + (idx / divisor) * (svgWidth - padding * 2);
-            const y = svgHeight - padding - ((p.val - minVal) / range) * (svgHeight - padding * 2);
+            const y = svgHeight - padding - ((p.val - minVal) / valueRange) * (svgHeight - padding * 2);
             return `${x},${y}`;
           })
           .join(' ')
@@ -133,19 +152,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-3xl font-bold text-white tracking-tight">
-                {userProfile.weightKg}
+                {metrics.weightKg}
                 <span className="text-sm ml-1 font-medium text-[#9AA3A0]">kg</span>
               </span>
-              <span className="text-[#45D483] text-sm flex items-center font-semibold">↓ 1.8kg</span>
+              <span className="text-[#45D483] text-sm flex items-center font-semibold">
+                {metrics.weightDelta === 0 ? '—' : `${metrics.weightDelta > 0 ? '↑' : '↓'} ${Math.abs(metrics.weightDelta)}kg`}
+              </span>
             </div>
           </div>
           <div className="mt-3">
             <div className="h-1.5 bg-[#252B30] rounded-full overflow-hidden">
-              <div className="h-full bg-[#B8F34A] rounded-full transition-all duration-500" style={{ width: '75%' }} />
+              <div className="h-full bg-[#B8F34A] rounded-full transition-all duration-500" style={{ width: `${metrics.weightProgressPct}%` }} />
             </div>
             <p className="text-[10px] text-[#9AA3A0] mt-1.5 flex items-center justify-between">
-              <span>Goal: 78.0 kg</span>
-              <span className="text-[#B8F34A] font-semibold">92% to target</span>
+              <span>Goal: {metrics.targetWeightKg} kg</span>
+              <span className="text-[#B8F34A] font-semibold">{metrics.weightProgressPct}% to target</span>
             </p>
           </div>
         </div>
@@ -162,10 +183,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-3xl font-bold text-white tracking-tight">
-                {userProfile.bodyFatPercentage}
+                {metrics.bodyFatPercentage}
                 <span className="text-sm ml-1 font-medium text-[#9AA3A0]">%</span>
               </span>
-              <span className="text-[#45D483] text-sm flex items-center font-semibold">↓ 1.2%</span>
+              <span className="text-[#45D483] text-sm flex items-center font-semibold">
+                {metrics.fatDelta === 0 ? '—' : `${metrics.fatDelta > 0 ? '↑' : '↓'} ${Math.abs(metrics.fatDelta)}%`}
+              </span>
             </div>
           </div>
           <div className="mt-3">
@@ -188,10 +211,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-3xl font-bold text-white tracking-tight">
-                {(userProfile.weightKg / Math.pow(userProfile.heightCm / 100, 2)).toFixed(1)}
+                {metrics.bmi.toFixed(1)}
               </span>
               <span className="text-xs font-semibold text-[#B8F34A] px-2 py-0.5 rounded-full bg-[#B8F34A]/10 border border-[#B8F34A]/20">
-                Healthy Normal
+                {metrics.bmiLabel}
               </span>
             </div>
           </div>
@@ -214,8 +237,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <OriginBadge origin="CALCULATED" />
             </div>
             <div className="flex items-baseline justify-between mt-1">
-              <span className="text-3xl font-bold text-[#B8F34A] tracking-tight">32</span>
-              <span className="text-[#45D483] text-sm font-semibold">-2 Years</span>
+              <span className="text-3xl font-bold text-[#B8F34A] tracking-tight">{metrics.bodyAge}</span>
+              <span className="text-[#45D483] text-sm font-semibold">
+                {metrics.bodyAgeDelta === 0
+                  ? 'vs age'
+                  : `${metrics.bodyAgeDelta > 0 ? '-' : '+'}${Math.abs(metrics.bodyAgeDelta)} yrs`}
+              </span>
             </div>
           </div>
           <div className="mt-3">
@@ -352,16 +379,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-lg text-white">Today's Workout</h3>
-                <p className="text-xs text-[#9AA3A0]">{todayWorkout.durationMinutes} min session • Hypertrophy Split</p>
+                <p className="text-xs text-[#9AA3A0]">
+                  {isRestDay
+                    ? 'Scheduled rest'
+                    : `${todayWorkout.durationMinutes} min session • ${workoutFocus || todayWorkout.category}`}
+                </p>
               </div>
               <span className="bg-[#B8F34A]/10 text-[#B8F34A] text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[#B8F34A]/20 uppercase tracking-wider">
-                UPPER BODY
+                {isRestDay ? 'REST' : todayWorkout.category}
               </span>
             </div>
 
             {/* List of exercises */}
             <div className="space-y-2.5 my-2">
-              {todayWorkout.exercises.slice(0, 3).map((ex, idx) => (
+              {(todayWorkout.exercises || []).slice(0, 3).map((ex, idx) => (
                 <div
                   key={idx}
                   className={`flex items-center gap-3.5 p-2.5 bg-[#181D22] rounded-xl border border-[#252B30] transition-colors ${
@@ -395,8 +426,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               id="btn-dash-start-workout"
-              onClick={() => onStartWorkout(todayWorkout)}
-              className="flex-1 bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 shadow-[0_2px_14px_rgba(184,243,74,0.25)] transition-all hover:scale-[1.01]"
+              onClick={() => !isRestDay && todayWorkout.id && onStartWorkout(todayWorkout)}
+              disabled={Boolean(isRestDay) || !todayWorkout.id}
+              className="flex-1 bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 shadow-[0_2px_14px_rgba(184,243,74,0.25)] transition-all hover:scale-[1.01] disabled:opacity-40"
             >
               <Play className="w-4 h-4 fill-current" />
               START WORKOUT
@@ -419,8 +451,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <p className="text-base sm:text-lg leading-relaxed mb-4 text-[#F5F7F2] font-medium">
-              Your body-fat percentage has decreased while your muscle mass has remained stable. This confirms highly effective{' '}
-              <span className="text-[#B8F34A] font-bold">body recomposition</span> with optimal strength retention.
+              {insight}
             </p>
           </div>
 
@@ -456,56 +487,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span className="text-[10px] text-[#9AA3A0]">Weight Trajectory (kg)</span>
               </div>
               <select
-                value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value as any)}
+                value={range}
+                onChange={(e) => onRangeChange(e.target.value as typeof range)}
                 className="bg-[#0B0D0F] border border-[#252B30] text-[10px] text-[#F5F7F2] rounded-lg px-2.5 py-1 outline-none focus:border-[#B8F34A]"
               >
-                <option value="3M">Last 3 Months</option>
-                <option value="6M">Last 6 Months</option>
-                <option value="1Y">Last Year</option>
+                <option value="1m">Last month</option>
+                <option value="3m">Last 3 Months</option>
+                <option value="6m">Last 6 Months</option>
+                <option value="1y">Last Year</option>
+                <option value="all">All</option>
               </select>
             </div>
 
             {/* Vertical Bar Chart Graphic */}
             <div className="h-28 flex items-end justify-between gap-2 px-1 pt-4">
-              <div className="w-full bg-[#B8F34A]/10 h-[45%] rounded-t-md relative group">
-                <div className="absolute bottom-0 w-full bg-[#B8F34A]/30 h-full rounded-t-md group-hover:bg-[#B8F34A]/50 transition-colors" />
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[#9AA3A0] opacity-0 group-hover:opacity-100 transition-opacity">
-                  83.2
-                </span>
-              </div>
-              <div className="w-full bg-[#B8F34A]/10 h-[60%] rounded-t-md relative group">
-                <div className="absolute bottom-0 w-full bg-[#B8F34A]/30 h-full rounded-t-md group-hover:bg-[#B8F34A]/50 transition-colors" />
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[#9AA3A0] opacity-0 group-hover:opacity-100 transition-opacity">
-                  82.5
-                </span>
-              </div>
-              <div className="w-full bg-[#B8F34A]/10 h-[52%] rounded-t-md relative group">
-                <div className="absolute bottom-0 w-full bg-[#B8F34A]/30 h-full rounded-t-md group-hover:bg-[#B8F34A]/50 transition-colors" />
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[#9AA3A0] opacity-0 group-hover:opacity-100 transition-opacity">
-                  81.9
-                </span>
-              </div>
-              <div className="w-full bg-[#B8F34A]/10 h-[72%] rounded-t-md relative group">
-                <div className="absolute bottom-0 w-full bg-[#B8F34A]/30 h-full rounded-t-md group-hover:bg-[#B8F34A]/50 transition-colors" />
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[#9AA3A0] opacity-0 group-hover:opacity-100 transition-opacity">
-                  81.0
-                </span>
-              </div>
-              <div className="w-full bg-[#B8F34A]/10 h-[88%] rounded-t-md relative group">
-                <div className="absolute bottom-0 w-full bg-[#B8F34A] h-full rounded-t-md" />
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[#B8F34A] font-mono">
-                  80.4
-                </div>
-              </div>
+              {(chartPoints.slice(-5).length ? chartPoints.slice(-5) : []).map((point, idx, arr) => {
+                const barMax = Math.max(...arr.map((p) => p.val), 1);
+                const height = Math.max(12, Math.round((point.val / barMax) * 100));
+                const isLast = idx === arr.length - 1;
+                return (
+                  <div
+                    key={`${point.label}-${idx}`}
+                    className="w-full bg-[#B8F34A]/10 rounded-t-md relative group"
+                    style={{ height: `${height}%` }}
+                  >
+                    <div
+                      className={`absolute bottom-0 w-full h-full rounded-t-md ${
+                        isLast ? 'bg-[#B8F34A]' : 'bg-[#B8F34A]/30 group-hover:bg-[#B8F34A]/50'
+                      }`}
+                    />
+                    <span
+                      className={`absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono ${
+                        isLast ? 'text-[#B8F34A] font-bold opacity-100' : 'text-[#9AA3A0] opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      {point.val}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex justify-between mt-2 text-[10px] text-[#9AA3A0] uppercase font-bold tracking-widest px-1">
-              <span>Aug</span>
-              <span>Sep</span>
-              <span>Oct</span>
-              <span>Nov</span>
-              <span>Dec</span>
+              {chartPoints.slice(-5).map((point) => (
+                <span key={point.label}>{point.label}</span>
+              ))}
             </div>
           </div>
 
@@ -520,7 +546,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Segmental Body Composition Visualizer */}
-      <BodySilhouetteVisualizer composition={latestComposition} />
+      <BodySilhouetteVisualizer
+        composition={latestComposition}
+        previousComposition={previousComposition}
+        chronologicalAge={userProfile.age}
+      />
     </div>
   );
 };
