@@ -3,7 +3,7 @@
 // Fields used: LoggedMealEntry.id, name, serving, mealCategory, caloriesKcal, proteinGrams, carbsGrams, fatGrams, timeLogged.
 
 import React, { useState } from 'react';
-import { LoggedMealEntry, MealCategory } from '@/types';
+import { DailyNutritionTarget, LoggedMealEntry, MealCategory } from '@/types';
 import { OriginBadge } from '../common/OriginBadge';
 import {
   Flame,
@@ -11,10 +11,6 @@ import {
   Trash2,
   Sparkles,
   Droplet,
-  PieChart,
-  ChevronRight,
-  TrendingUp,
-  Apple,
   Coffee,
   Sun,
   Moon,
@@ -23,6 +19,9 @@ import {
 
 interface NutritionViewProps {
   loggedMeals: LoggedMealEntry[];
+  targets: DailyNutritionTarget;
+  insight?: string;
+  waterTargetMl?: number;
   onOpenFoodLogger: (meal?: MealCategory) => void;
   onOpenAIPlanner: () => void;
   onDeleteMealEntry: (id: string) => void;
@@ -30,22 +29,30 @@ interface NutritionViewProps {
 
 export const NutritionView: React.FC<NutritionViewProps> = ({
   loggedMeals,
+  targets,
+  insight,
+  waterTargetMl = 3500,
   onOpenFoodLogger,
   onOpenAIPlanner,
   onDeleteMealEntry,
 }) => {
-  const [waterMilliliters, setWaterMilliliters] = useState(2500);
-  const targetWaterMl = 3500;
+  const [waterMilliliters, setWaterMilliliters] = useState(0);
+  const targetWaterMl = waterTargetMl;
 
-  const targetCalories = 2200;
-  const targetProtein = 160;
-  const targetCarbs = 220;
-  const targetFat = 70;
+  const targetCalories = Math.max(1, targets.targetCaloriesKcal);
+  const targetProtein = Math.max(1, targets.targetProteinGrams);
+  const targetCarbs = Math.max(1, targets.targetCarbsGrams);
+  const targetFat = Math.max(1, targets.targetFatGrams);
+  const targetFiber = Math.max(1, targets.targetFiberGrams);
 
   const totalCalories = loggedMeals.reduce((acc, curr) => acc + curr.caloriesKcal, 0);
   const totalProtein = loggedMeals.reduce((acc, curr) => acc + curr.proteinGrams, 0);
   const totalCarbs = loggedMeals.reduce((acc, curr) => acc + curr.carbsGrams, 0);
   const totalFat = loggedMeals.reduce((acc, curr) => acc + curr.fatGrams, 0);
+  const totalFiber = loggedMeals.reduce((acc, curr) => acc + (curr.fiberGrams || 0), 0);
+  const proteinPct = Math.round((targetProtein * 4 * 100) / targetCalories);
+  const carbPct = Math.round((targetCarbs * 4 * 100) / targetCalories);
+  const fatPct = Math.round((targetFat * 9 * 100) / targetCalories);
 
   const mealsByCategory: Record<MealCategory, LoggedMealEntry[]> = {
     breakfast: loggedMeals.filter((m) => m.mealCategory === 'breakfast'),
@@ -57,13 +64,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const getCategoryMeta = (cat: MealCategory) => {
     switch (cat) {
       case 'breakfast':
-        return { title: 'Breakfast', icon: Coffee, target: '~500 kcal' };
+        return { title: 'Breakfast', icon: Coffee, target: `~${Math.round(targetCalories * 0.23)} kcal` };
       case 'lunch':
-        return { title: 'Lunch', icon: Sun, target: '~700 kcal' };
+        return { title: 'Lunch', icon: Sun, target: `~${Math.round(targetCalories * 0.32)} kcal` };
       case 'dinner':
-        return { title: 'Dinner', icon: Moon, target: '~700 kcal' };
+        return { title: 'Dinner', icon: Moon, target: `~${Math.round(targetCalories * 0.32)} kcal` };
       case 'snack':
-        return { title: 'Snacks & Supplements', icon: Cookie, target: '~300 kcal' };
+        return { title: 'Snacks & Supplements', icon: Cookie, target: `~${Math.round(targetCalories * 0.13)} kcal` };
     }
   };
 
@@ -150,8 +157,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               </div>
             </div>
 
-            {/* 3 Macro Cards */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Macro Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* Protein */}
               <div className="bg-[#181D22] p-4 rounded-xl border border-[#252B30]">
                 <div className="flex items-center justify-between text-xs text-[#9AA3A0] mb-1 font-bold">
@@ -202,11 +209,28 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Fiber */}
+              <div className="bg-[#181D22] p-4 rounded-xl border border-[#252B30]">
+                <div className="flex items-center justify-between text-xs text-[#9AA3A0] mb-1 font-bold">
+                  <span className="text-[#45D483]">Fiber</span>
+                  <span>{Math.round((totalFiber / targetFiber) * 100)}%</span>
+                </div>
+                <div className="text-xl font-black text-white font-mono">
+                  {Math.round(totalFiber)} <span className="text-xs text-[#9AA3A0]">/ {targetFiber}g</span>
+                </div>
+                <div className="w-full bg-[#0B0D0F] h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="bg-[#45D483] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min((totalFiber / targetFiber) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="mt-5 pt-3 border-t border-[#252B30]/60 text-xs text-[#9AA3A0] flex justify-between">
-            <span>Macro Split: 30% Protein • 45% Carbs • 25% Fat</span>
+            <span>Macro Split: {proteinPct}% Protein • {carbPct}% Carbs • {fatPct}% Fat</span>
             <span className="text-[#45D483] font-semibold">TDEE Adjusted</span>
           </div>
         </div>
@@ -268,8 +292,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           <div className="p-4 rounded-2xl bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/30 flex items-start gap-3 text-xs text-[#F5F7F2]">
             <Sparkles className="w-5 h-5 text-[#B8F34A] shrink-0 mt-0.5" />
             <div>
-              <strong className="text-[#B8F34A] block mb-1">FitForge AI Nutrition Analysis:</strong>
-              Your protein intake (112g) is on track for the day. For dinner, aim for ~48g protein (e.g. wild salmon or grilled chicken breast) to reach the 160g muscle synthesis threshold.
+              <strong className="text-[#B8F34A] block mb-1">FitForge Nutrition Insight:</strong>
+              {insight ||
+                `Protein is at ${Math.round(totalProtein)}g of ${targetProtein}g. Remaining protein should come from a verified food log, not an estimated meal.`}
             </div>
           </div>
         </div>

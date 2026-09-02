@@ -1,17 +1,46 @@
 'use client';
 
 // Fields used: FoodItem.id, name, servingSize, servingWeightGrams, caloriesKcal, proteinGrams, carbsGrams, fatGrams, fiberGrams, category, isFavorite;
-// LoggedMealEntry.id, name, mealCategory, serving, caloriesKcal, proteinGrams, carbsGrams, fatGrams, timeLogged.
+// LoggedMealEntry.id, name, mealCategory, serving, caloriesKcal, proteinGrams, carbsGrams, fatGrams, fiberGrams, timeLogged.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FoodItem, MealCategory, LoggedMealEntry } from '@/types';
-import { foodDatabase } from '@/data/mockData';
-import { Search, Plus, X, Flame, Sparkles, Check, Scale } from 'lucide-react';
+import { Search, Plus, X, Flame } from 'lucide-react';
 
 interface FoodLoggerModalProps {
   onClose: () => void;
   onLogFood: (entry: LoggedMealEntry) => void;
   defaultMeal?: MealCategory;
+}
+
+function toLoggedEntry(payload: {
+  id: string;
+  name: string;
+  serving?: string;
+  mealCategory: MealCategory;
+  caloriesKcal: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+  fiberGrams?: number;
+  timeLogged?: string;
+  foodId?: string;
+}): LoggedMealEntry {
+  return {
+    id: payload.id,
+    foodId: payload.foodId,
+    name: payload.name,
+    serving: payload.serving,
+    mealCategory: payload.mealCategory,
+    caloriesKcal: payload.caloriesKcal,
+    proteinGrams: payload.proteinGrams,
+    carbsGrams: payload.carbsGrams,
+    fatGrams: payload.fatGrams,
+    fiberGrams: payload.fiberGrams,
+    timeLogged:
+      payload.timeLogged ||
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
 }
 
 export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
@@ -20,67 +49,96 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
   defaultMeal = 'breakfast',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<MealCategory>(defaultMeal);
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(foodDatabase[0] || null);
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [servingMultiplier, setServingMultiplier] = useState(1);
   const [activeTab, setActiveTab] = useState<'search' | 'custom'>('search');
 
-  // Custom food fields
   const [customName, setCustomName] = useState('');
   const [customServing, setCustomServing] = useState('100g');
   const [customCalories, setCustomCalories] = useState('');
   const [customProtein, setCustomProtein] = useState('');
   const [customCarbs, setCustomCarbs] = useState('');
   const [customFat, setCustomFat] = useState('');
+  const [customFiber, setCustomFiber] = useState('');
 
-  const filteredFoods = foodDatabase.filter(
-    (f) =>
-      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const handle = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/foods/search?q=${encodeURIComponent(q)}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message || 'Search failed');
+        setSearchResults(json.data?.items || []);
+      } catch (error) {
+        setSearchResults([]);
+        setErrorMsg(error instanceof Error ? error.message : 'Unable to search foods.');
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery]);
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);
     setServingMultiplier(1);
+    setErrorMsg('');
+  };
+
+  const persistLog = async (body: Record<string, unknown>) => {
+    setSaving(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/food-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Unable to log food.');
+      const log = json.data.log;
+      onLogFood(toLoggedEntry(log));
+      onClose();
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Unable to log food.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogSelected = () => {
     if (!selectedFood) return;
-
-    const entry: LoggedMealEntry = {
-      id: `meal-${Date.now()}`,
+    void persistLog({
+      foodId: selectedFood.id,
       name: selectedFood.name,
       mealCategory: selectedMeal,
-      serving: `${servingMultiplier} × ${selectedFood.servingSize}`,
-      caloriesKcal: Math.round(selectedFood.caloriesKcal * servingMultiplier),
-      proteinGrams: Math.round(selectedFood.proteinGrams * servingMultiplier * 10) / 10,
-      carbsGrams: Math.round(selectedFood.carbsGrams * servingMultiplier * 10) / 10,
-      fatGrams: Math.round(selectedFood.fatGrams * servingMultiplier * 10) / 10,
-      timeLogged: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    onLogFood(entry);
-    onClose();
+      servings: servingMultiplier,
+    });
   };
 
   const handleLogCustom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customName || !customCalories) return;
-
-    const entry: LoggedMealEntry = {
-      id: `meal-${Date.now()}`,
+    void persistLog({
       name: customName,
-      mealCategory: selectedMeal,
       serving: customServing || '1 serving',
+      mealCategory: selectedMeal,
       caloriesKcal: Number(customCalories) || 0,
       proteinGrams: Number(customProtein) || 0,
       carbsGrams: Number(customCarbs) || 0,
       fatGrams: Number(customFat) || 0,
-      timeLogged: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    onLogFood(entry);
-    onClose();
+      fiberGrams: Number(customFiber) || 0,
+    });
   };
 
   return (
@@ -89,7 +147,6 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
         id="modal-food-logger"
         className="w-full max-w-xl bg-[#12161A] border border-[#252B30] rounded-3xl p-6 sm:p-8 text-[#F5F7F2] shadow-2xl relative my-6"
       >
-        {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-[#252B30]">
           <div>
             <div className="flex items-center gap-2">
@@ -99,7 +156,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               <h2 className="text-xl font-bold tracking-tight text-white">Log Food & Macros</h2>
             </div>
             <p className="text-xs text-[#9AA3A0] mt-1">
-              Select verified whole foods or input custom nutrition labels
+              Search USDA / Open Food Facts, or enter a nutrition label
             </p>
           </div>
           <button
@@ -110,7 +167,6 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
           </button>
         </div>
 
-        {/* Meal Category Selector */}
         <div className="mt-4">
           <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
             Target Meal
@@ -133,7 +189,6 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
           </div>
         </div>
 
-        {/* Mode Switch: Verified Library vs Custom Food */}
         <div className="mt-4 flex border-b border-[#252B30]">
           <button
             type="button"
@@ -159,52 +214,62 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
           </button>
         </div>
 
+        {errorMsg ? <p className="mt-3 text-xs text-[#F05D5E]">{errorMsg}</p> : null}
+
         {activeTab === 'search' ? (
           <div className="mt-4 space-y-4">
-            {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-[#9AA3A0] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search chicken breast, oats, eggs, rice, avocado..."
+                placeholder="Search foods or paste an 8–14 digit barcode"
                 className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/50 focus:border-[#B8F34A] outline-none"
               />
             </div>
 
-            {/* Food List */}
             <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
-              {filteredFoods.map((food) => {
-                const isSelected = selectedFood?.id === food.id;
-                return (
-                  <div
-                    key={food.id}
-                    onClick={() => handleSelectFood(food)}
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-[#181D22] border-[#B8F34A]'
-                        : 'bg-[#0B0D0F]/50 border-[#252B30] hover:border-[#9AA3A0]/40'
-                    }`}
-                  >
-                    <div>
-                      <span className="font-bold text-white block">{food.name}</span>
-                      <span className="text-[11px] text-[#9AA3A0]">
-                        Serving: {food.servingSize} • {food.category}
-                      </span>
+              {searching ? (
+                <div className="text-center py-6 text-xs text-[#9AA3A0]">Searching verified foods…</div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-6 text-xs text-[#9AA3A0]/70">
+                  {searchQuery.trim().length < 2
+                    ? 'Type at least 2 characters to search.'
+                    : 'No matching foods yet.'}
+                </div>
+              ) : (
+                searchResults.map((food) => {
+                  const isSelected = selectedFood?.id === food.id;
+                  return (
+                    <div
+                      key={food.id}
+                      onClick={() => handleSelectFood(food)}
+                      className={`p-3 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-[#181D22] border-[#B8F34A]'
+                          : 'bg-[#0B0D0F]/50 border-[#252B30] hover:border-[#9AA3A0]/40'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold text-white block">{food.name}</span>
+                        <span className="text-[11px] text-[#9AA3A0]">
+                          Serving: {food.servingSize} • {food.category}
+                          {food.fiberGrams ? ` • Fiber ${food.fiberGrams}g` : ''}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-[#B8F34A] block">{food.caloriesKcal} kcal</span>
+                        <span className="text-[10px] text-[#9AA3A0]">
+                          P: {food.proteinGrams}g | C: {food.carbsGrams}g | F: {food.fatGrams}g
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-bold text-[#B8F34A] block">{food.caloriesKcal} kcal</span>
-                      <span className="text-[10px] text-[#9AA3A0]">
-                        P: {food.proteinGrams}g | C: {food.carbsGrams}g | F: {food.fatGrams}g
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
-            {/* Selected Food Serving Adjuster & Live Totals */}
             {selectedFood && (
               <div className="p-4 bg-[#181D22] border border-[#252B30] rounded-2xl">
                 <div className="flex items-center justify-between mb-3">
@@ -230,7 +295,6 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                   </div>
                 </div>
 
-                {/* Macro summary pills */}
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div className="bg-[#0B0D0F] p-2 rounded-xl border border-[#252B30]">
                     <span className="text-[10px] text-[#9AA3A0] block">Calories</span>
@@ -271,12 +335,12 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               <button
                 id="btn-confirm-log-food"
                 type="button"
-                disabled={!selectedFood}
+                disabled={!selectedFood || saving}
                 onClick={handleLogSelected}
                 className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
-                Add to {selectedMeal}
+                {saving ? 'Saving…' : `Add to ${selectedMeal}`}
               </button>
             </div>
           </div>
@@ -318,7 +382,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-[#5DA9FF] mb-1">Protein (g)</label>
                 <input
@@ -352,6 +416,17 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                   className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
                 />
               </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#45D483] mb-1">Fiber (g)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={customFiber}
+                  onChange={(e) => setCustomFiber(e.target.value)}
+                  placeholder="3"
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
+                />
+              </div>
             </div>
 
             <div className="pt-3 flex justify-end gap-2">
@@ -364,9 +439,10 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs"
+                disabled={saving}
+                className="px-6 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs disabled:opacity-50"
               >
-                Save & Log
+                {saving ? 'Saving…' : 'Save & Log'}
               </button>
             </div>
           </form>

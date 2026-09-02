@@ -31,11 +31,13 @@ export function macroTargets(input: {
   tdeeKcal: number;
   weightKg: number;
   goal: FitnessGoal;
+  dietType?: "balanced" | "high_protein" | "low_carb" | "keto" | "vegetarian" | "vegan" | "mediterranean";
 }): {
   targetCaloriesKcal: number;
   targetProteinGrams: number;
   targetCarbsGrams: number;
   targetFatGrams: number;
+  targetFiberGrams: number;
 } {
   const targetCaloriesKcal =
     input.goal === "lose_fat"
@@ -44,17 +46,32 @@ export function macroTargets(input: {
         ? Math.round(input.tdeeKcal + 300)
         : input.tdeeKcal;
 
-  const targetProteinGrams = Math.round(input.weightKg * 2.0);
-  const targetFatGrams = Math.round((targetCaloriesKcal * 0.25) / 9);
-  const targetCarbsGrams = Math.round(
-    (targetCaloriesKcal - (targetProteinGrams * 4 + targetFatGrams * 9)) / 4
+  const diet = input.dietType || "high_protein";
+  const proteinPerKg =
+    diet === "high_protein" || input.goal === "build_muscle" || input.goal === "strength"
+      ? 2.2
+      : diet === "keto" || diet === "low_carb"
+        ? 1.8
+        : 1.6;
+  const targetProteinGrams = Math.round(input.weightKg * proteinPerKg);
+
+  const fatFraction =
+    diet === "keto" ? 0.7 : diet === "low_carb" ? 0.4 : diet === "mediterranean" ? 0.35 : 0.25;
+  const carbFloor = diet === "keto" ? 40 : 0;
+  const targetFatGrams = Math.round((targetCaloriesKcal * fatFraction) / 9);
+  const remainingKcal = Math.max(
+    0,
+    targetCaloriesKcal - (targetProteinGrams * 4 + targetFatGrams * 9)
   );
+  const targetCarbsGrams = Math.max(carbFloor, Math.round(remainingKcal / 4));
+  const targetFiberGrams = Math.max(25, Math.round((targetCaloriesKcal / 1000) * 14));
 
   return {
     targetCaloriesKcal,
     targetProteinGrams,
     targetCarbsGrams,
     targetFatGrams,
+    targetFiberGrams,
   };
 }
 

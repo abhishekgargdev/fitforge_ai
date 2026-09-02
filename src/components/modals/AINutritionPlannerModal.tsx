@@ -1,15 +1,36 @@
 'use client';
 
-// Fields used: userProfile.fitnessGoal; DietType; generated plan planTitle, dailyCalories, proteinGrams, carbsGrams, fatGrams, meals[].mealName, caloriesKcal, proteinGrams, carbsGrams, fatGrams, foods[].
+// Fields used: userProfile.fitnessGoal; DietType; calories, protein, carbs, fat, diet, meals/day,
+// preferences, allergies, budget, cuisine; generated planTitle, dailyCalories, proteinGrams,
+// carbsGrams, fatGrams, fiberGrams, meals[].mealName, caloriesKcal, foods[], resolvedFoods.
 
-import React, { useState } from 'react';
-import { UserProfile, FitnessGoal, DietType } from '@/types';
-import { Sparkles, X, Check, Apple, Utensils, ShoppingBag } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { UserProfile, DietType } from '@/types';
+import { Sparkles, X, Check, Utensils, ShoppingBag } from 'lucide-react';
+
+type NutritionPlanResult = {
+  planTitle: string;
+  dailyCalories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+  fiberGrams?: number;
+  meals: Array<{
+    mealName: string;
+    mealCategory?: string;
+    caloriesKcal: number;
+    proteinGrams: number;
+    carbsGrams: number;
+    fatGrams: number;
+    foods: string[];
+  }>;
+  groceryList?: string[];
+};
 
 interface AINutritionPlannerModalProps {
   userProfile: UserProfile;
   onClose: () => void;
-  onApplyPlan: (plan: any) => void;
+  onApplyPlan: (plan: NutritionPlanResult) => void;
 }
 
 export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = ({
@@ -19,11 +40,37 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
 }) => {
   const [dietType, setDietType] = useState<DietType>('high_protein');
   const [dailyCalories, setDailyCalories] = useState(2200);
+  const [targetProtein, setTargetProtein] = useState(160);
+  const [targetCarbs, setTargetCarbs] = useState(220);
+  const [targetFat, setTargetFat] = useState(70);
   const [mealsPerDay, setMealsPerDay] = useState(4);
-  const [allergies, setAllergies] = useState<string[]>(['No lactose']);
-  const [customNotes, setCustomNotes] = useState('');
+  const [allergies, setAllergies] = useState(userProfile.allergies || '');
+  const [preferences, setPreferences] = useState(userProfile.foodPreferences || '');
+  const [budget, setBudget] = useState<'low' | 'medium' | 'high'>('medium');
+  const [cuisine, setCuisine] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<any | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [generatedResult, setGeneratedResult] = useState<NutritionPlanResult | null>(null);
+
+  useEffect(() => {
+    fetch('/api/nutrition-goals')
+      .then((res) => res.json())
+      .then((json) => {
+        const goals = json.data?.goals;
+        if (!goals) return;
+        setDailyCalories(goals.targetCaloriesKcal);
+        setTargetProtein(goals.targetProteinGrams);
+        setTargetCarbs(goals.targetCarbsGrams);
+        setTargetFat(goals.targetFatGrams);
+        if (goals.dietType) setDietType(goals.dietType);
+        if (goals.mealsPerDay) setMealsPerDay(goals.mealsPerDay);
+        if (goals.allergies) setAllergies(goals.allergies);
+        if (goals.preferences) setPreferences(goals.preferences);
+        if (goals.budget) setBudget(goals.budget);
+        if (goals.cuisine) setCuisine(goals.cuisine);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const dietOptions: { id: DietType; label: string; desc: string }[] = [
     { id: 'balanced', label: 'Balanced Athletic', desc: 'Standard 40/30/30 macro split' },
@@ -37,6 +84,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setErrorMsg('');
     try {
       const res = await fetch('/api/ai/nutrition-plan', {
         method: 'POST',
@@ -45,68 +93,58 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
           goal: userProfile.fitnessGoal,
           dietType,
           targetCalories: dailyCalories,
+          targetProteinGrams: targetProtein,
+          targetCarbsGrams: targetCarbs,
+          targetFatGrams: targetFat,
           mealsCount: mealsPerDay,
-          restrictions: allergies,
-          preferences: customNotes,
+          restrictions: allergies
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          allergies,
+          preferences,
+          budget,
+          cuisine,
         }),
       });
 
-      if (!res.ok) throw new Error("nutrition plan unavailable");
-      const data = await res.json();
-      setGeneratedResult(data);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Nutrition plan unavailable');
+      setGeneratedResult(json.data);
     } catch (e) {
-      // Fallback preview
-      setGeneratedResult({
-        planTitle: 'High-Protein Muscle Architecture Meal Plan',
-        dailyCalories,
-        proteinGrams: 165,
-        carbsGrams: 215,
-        fatGrams: 65,
-        meals: [
-          {
-            mealName: 'Breakfast: Power Oats & Egg Whites',
-            caloriesKcal: 520,
-            proteinGrams: 42,
-            carbsGrams: 60,
-            fatGrams: 12,
-            foods: ['1 cup Rolled Oats with berries', '4 Egg Whites + 1 Whole Egg', '1 scoop Whey Protein'],
-          },
-          {
-            mealName: 'Lunch: Grilled Chicken & Quinoa Bowl',
-            caloriesKcal: 680,
-            proteinGrams: 55,
-            carbsGrams: 75,
-            fatGrams: 16,
-            foods: ['200g Grilled Chicken Breast', '1.5 cups Cooked Quinoa', 'Steamed Broccoli with olive oil drizzle'],
-          },
-          {
-            mealName: 'Pre-Workout Snack: Greek Yogurt & Honey',
-            caloriesKcal: 310,
-            proteinGrams: 25,
-            carbsGrams: 35,
-            fatGrams: 6,
-            foods: ['200g Non-fat Greek Yogurt', '1 Banana', '1 tbsp Honey'],
-          },
-          {
-            mealName: 'Dinner: Wild Salmon & Sweet Potato',
-            caloriesKcal: 690,
-            proteinGrams: 43,
-            carbsGrams: 45,
-            fatGrams: 31,
-            foods: ['180g Baked Salmon Fillet', '1 Baked Sweet Potato', 'Mixed Green Salad with avocado'],
-          },
-        ],
-        groceryList: [
-          'Chicken Breast (1 kg)',
-          'Wild Salmon (500g)',
-          'Rolled Oats & Quinoa',
-          'Greek Yogurt & Eggs',
-          'Sweet Potatoes & Broccoli',
-          'Fresh Berries & Bananas',
-        ],
-      });
+      setErrorMsg(e instanceof Error ? e.message : 'Unable to generate a nutrition plan.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!generatedResult) return;
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/nutrition-goals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetCaloriesKcal: generatedResult.dailyCalories || dailyCalories,
+          targetProteinGrams: generatedResult.proteinGrams || targetProtein,
+          targetCarbsGrams: generatedResult.carbsGrams || targetCarbs,
+          targetFatGrams: generatedResult.fatGrams || targetFat,
+          targetFiberGrams: Math.max(10, generatedResult.fiberGrams || 25),
+          dietType,
+          mealsPerDay,
+          preferences,
+          allergies,
+          budget,
+          cuisine,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Unable to save nutrition goals.');
+      onApplyPlan(generatedResult);
+      onClose();
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Unable to apply nutrition plan.');
     }
   };
 
@@ -116,7 +154,6 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
         id="modal-ai-nutrition-planner"
         className="w-full max-w-2xl bg-[#12161A] border border-[#252B30] rounded-3xl p-6 sm:p-8 text-[#F5F7F2] shadow-2xl relative my-8"
       >
-        {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-[#252B30]">
           <div>
             <div className="flex items-center gap-2">
@@ -126,7 +163,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               <h2 className="text-xl font-bold tracking-tight text-white">AI Nutrition & Meal Planner</h2>
             </div>
             <p className="text-xs text-[#9AA3A0] mt-1">
-              Personalized macro targets, meal timing, and weekly grocery breakdown
+              AI proposes foods by name; calories and macros come from the food database
             </p>
           </div>
           <button
@@ -137,10 +174,8 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
           </button>
         </div>
 
-        {/* Content */}
         {!generatedResult ? (
           <div className="mt-5 space-y-5 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
-            {/* Diet Pattern */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
                 Nutritional Architecture
@@ -170,67 +205,144 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               </div>
             </div>
 
-            {/* Target Calories & Meals Per Day */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
-                  Daily Caloric Target ({dailyCalories} kcal)
-                </label>
-                <input
-                  type="range"
-                  min="1600"
-                  max="3800"
-                  step="50"
-                  value={dailyCalories}
-                  onChange={(e) => setDailyCalories(Number(e.target.value))}
-                  className="w-full accent-[#B8F34A] cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-[#9AA3A0] mt-1 font-mono">
-                  <span>1,600 (Aggressive Cut)</span>
-                  <span>2,200 (Target)</span>
-                  <span>3,800 (Bulk)</span>
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                Daily Caloric Target ({dailyCalories} kcal)
+              </label>
+              <input
+                type="range"
+                min="1600"
+                max="3800"
+                step="50"
+                value={dailyCalories}
+                onChange={(e) => setDailyCalories(Number(e.target.value))}
+                className="w-full accent-[#B8F34A] cursor-pointer"
+              />
+            </div>
 
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
-                  Meals Per Day ({mealsPerDay} meals)
-                </label>
-                <div className="flex gap-2">
-                  {[3, 4, 5, 6].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setMealsPerDay(num)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                        mealsPerDay === num
-                          ? 'bg-[#B8F34A] text-[#0B0D0F]'
-                          : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
-                      }`}
-                    >
-                      {num} Meals
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-[11px] font-bold text-[#5DA9FF] mb-1">Protein (g)</label>
+                <input
+                  type="number"
+                  min={40}
+                  max={400}
+                  value={targetProtein}
+                  onChange={(e) => setTargetProtein(Number(e.target.value))}
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#F5B942] mb-1">Carbs (g)</label>
+                <input
+                  type="number"
+                  min={20}
+                  max={800}
+                  value={targetCarbs}
+                  onChange={(e) => setTargetCarbs(Number(e.target.value))}
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#F05D5E] mb-1">Fat (g)</label>
+                <input
+                  type="number"
+                  min={20}
+                  max={300}
+                  value={targetFat}
+                  onChange={(e) => setTargetFat(Number(e.target.value))}
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#B8F34A]"
+                />
               </div>
             </div>
 
-            {/* Dietary Constraints / Notes */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
-                Allergies or Preferences
+                Meals Per Day ({mealsPerDay} meals)
+              </label>
+              <div className="flex gap-2">
+                {[3, 4, 5, 6].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setMealsPerDay(num)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                      mealsPerDay === num
+                        ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                        : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                    }`}
+                  >
+                    {num} Meals
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                  Allergies
+                </label>
+                <input
+                  type="text"
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                  placeholder="e.g. peanuts, lactose"
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/50 focus:border-[#B8F34A] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                  Cuisine
+                </label>
+                <input
+                  type="text"
+                  value={cuisine}
+                  onChange={(e) => setCuisine(e.target.value)}
+                  placeholder="e.g. Indian, Mediterranean"
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/50 focus:border-[#B8F34A] outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                Budget
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['low', 'medium', 'high'] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setBudget(level)}
+                    className={`py-2 rounded-xl text-xs font-bold capitalize ${
+                      budget === level
+                        ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                        : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0]'
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                Preferences
               </label>
               <input
                 type="text"
-                value={customNotes}
-                onChange={(e) => setCustomNotes(e.target.value)}
-                placeholder="e.g. No dairy, high fiber, prefer easy 15-minute prep dinners"
+                value={preferences}
+                onChange={(e) => setPreferences(e.target.value)}
+                placeholder="e.g. high fiber, 15-minute dinners"
                 className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/50 focus:border-[#B8F34A] outline-none"
               />
             </div>
+
+            {errorMsg ? <p className="text-xs text-[#F05D5E]">{errorMsg}</p> : null}
           </div>
         ) : (
-          /* Generated Plan Output */
           <div className="mt-5 space-y-4 max-h-[65vh] overflow-y-auto custom-scrollbar pr-1">
             <div className="p-4 rounded-2xl bg-[#181D22] border border-[#B8F34A]/40">
               <div className="flex items-center justify-between mb-2">
@@ -240,8 +352,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                 </span>
               </div>
 
-              {/* Macro Pills */}
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
                 <div className="bg-[#0B0D0F] p-2 rounded-xl border border-[#252B30]">
                   <span className="text-[10px] text-[#5DA9FF] block">Protein</span>
                   <span className="font-bold text-white">{generatedResult.proteinGrams}g</span>
@@ -254,15 +365,18 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                   <span className="text-[10px] text-[#F05D5E] block">Fat</span>
                   <span className="font-bold text-white">{generatedResult.fatGrams}g</span>
                 </div>
+                <div className="bg-[#0B0D0F] p-2 rounded-xl border border-[#252B30]">
+                  <span className="text-[10px] text-[#45D483] block">Fiber</span>
+                  <span className="font-bold text-white">{generatedResult.fiberGrams ?? 0}g</span>
+                </div>
               </div>
             </div>
 
-            {/* Meals List */}
             <div className="space-y-2.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#9AA3A0]">
                 Daily Meal Architecture
               </h4>
-              {generatedResult.meals?.map((meal: any, idx: number) => (
+              {generatedResult.meals?.map((meal, idx) => (
                 <div
                   key={idx}
                   className="p-3.5 rounded-xl bg-[#181D22] border border-[#252B30] text-xs"
@@ -275,7 +389,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                     <span className="font-bold text-[#B8F34A]">{meal.caloriesKcal} kcal</span>
                   </div>
                   <ul className="text-[11px] text-[#9AA3A0] list-disc list-inside space-y-0.5">
-                    {meal.foods?.map((f: string, fIdx: number) => (
+                    {meal.foods?.map((f, fIdx) => (
                       <li key={fIdx}>{f}</li>
                     ))}
                   </ul>
@@ -283,7 +397,6 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               ))}
             </div>
 
-            {/* Groceries Checklist */}
             {generatedResult.groceryList && (
               <div className="p-4 rounded-xl bg-[#0B0D0F]/70 border border-[#252B30]">
                 <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-1.5">
@@ -291,7 +404,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                   Weekly Grocery Checklist
                 </h4>
                 <div className="grid grid-cols-2 gap-1.5 text-xs text-[#9AA3A0]">
-                  {generatedResult.groceryList.map((item: string, idx: number) => (
+                  {generatedResult.groceryList.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#B8F34A]" />
                       <span>{item}</span>
@@ -300,10 +413,10 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                 </div>
               </div>
             )}
+            {errorMsg ? <p className="text-xs text-[#F05D5E]">{errorMsg}</p> : null}
           </div>
         )}
 
-        {/* Footer */}
         <div className="mt-6 pt-4 border-t border-[#252B30] flex items-center justify-end gap-3">
           {generatedResult ? (
             <>
@@ -317,10 +430,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
               <button
                 id="btn-apply-ai-nutrition"
                 type="button"
-                onClick={() => {
-                  onApplyPlan(generatedResult);
-                  onClose();
-                }}
+                onClick={() => void handleApply()}
                 className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs shadow-sm"
               >
                 Apply Nutrition Plan
@@ -339,7 +449,7 @@ export const AINutritionPlannerModal: React.FC<AINutritionPlannerModalProps> = (
                 id="btn-generate-ai-nutrition"
                 type="button"
                 disabled={isGenerating}
-                onClick={handleGenerate}
+                onClick={() => void handleGenerate()}
                 className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4 fill-current" />
