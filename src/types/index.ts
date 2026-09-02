@@ -84,6 +84,15 @@ export interface UserProfile {
 
 export type Profile = UserProfile;
 
+export type AiPersona = "scientific" | "motivational" | "strict";
+
+export interface UserSettings {
+  unitSystem: "metric" | "imperial";
+  theme: "dark" | "light" | "system";
+  aiPersona: AiPersona;
+  audioChimes: boolean;
+}
+
 export interface User {
   id: string;
   name: string;

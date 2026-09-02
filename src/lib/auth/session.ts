@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { encode, decode } from "next-auth/jwt";
 import { cookies } from "next/headers";
+import { connectDB } from "@/lib/db/mongodb";
+import { User } from "@/models/User";
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 
@@ -59,6 +61,15 @@ export async function clearSessionCookie() {
   store.set(cookieName(), "", cookieOptions(0));
   store.set("next-auth.session-token", "", cookieOptions(0));
   store.set("__Secure-next-auth.session-token", "", { ...cookieOptions(0), secure: true });
+}
+
+export async function requireSessionUser() {
+  const token = await readSessionToken();
+  if (!token) return null;
+  await connectDB();
+  const user = await User.findById(token.userId);
+  if (!user) return null;
+  return { token, user };
 }
 
 export async function readSessionToken(): Promise<AuthToken | null> {

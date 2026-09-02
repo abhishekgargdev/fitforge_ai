@@ -18,6 +18,12 @@ const profileSchema = new Schema(
     allergies: { type: String, default: "" },
     unitSystem: { type: String, enum: ["metric", "imperial"], default: "metric" },
     theme: { type: String, enum: ["dark", "light", "system"], default: "dark" },
+    aiPersona: {
+      type: String,
+      enum: ["scientific", "motivational", "strict"],
+      default: "scientific",
+    },
+    audioChimes: { type: Boolean, default: true },
   },
   { timestamps: true, collection: "profiles" }
 );

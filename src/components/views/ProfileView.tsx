@@ -1,8 +1,10 @@
 'use client';
 
-// Fields used: UserProfile.name, email, age, gender, heightCm, weightKg, bodyFatPercentage, fitnessGoal, experienceLevel, trainingDaysPerWeek.
+// Fields used: UserProfile.name, email, age, gender, heightCm, weightKg, bodyFatPercentage,
+// fitnessGoal, experienceLevel, trainingDaysPerWeek (chips). Email is display-only.
+// memberSince from users.createdAt. Wearable cards are static UI (not persisted).
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserProfile, FitnessGoal, ExperienceLevel } from '@/types';
 import { OriginBadge } from '../common/OriginBadge';
 import {
@@ -20,18 +22,41 @@ import {
 
 interface ProfileViewProps {
   userProfile: UserProfile;
-  onUpdateProfile: (updated: UserProfile) => void;
+  memberSince?: string | null;
+  onUpdateProfile: (updated: UserProfile) => void | Promise<void>;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile, onUpdateProfile }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({
+  userProfile,
+  memberSince,
+  onUpdateProfile,
+}) => {
   const [formData, setFormData] = useState<UserProfile>(userProfile);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    setFormData(userProfile);
+  }, [userProfile]);
+
+  const memberLabel = memberSince
+    ? new Date(memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateProfile(formData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setSaveError('');
+    setIsSaving(true);
+    try {
+      await onUpdateProfile(formData);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2500);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save profile.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -46,7 +71,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile, onUpdateP
             <div>
               <h2 className="text-2xl font-black text-white">{formData.name}</h2>
               <p className="text-xs text-[#9AA3A0]">
-                {formData.email} • Member since January 2026
+                {formData.email}
+                {memberLabel ? ` • Member since ${memberLabel}` : ''}
               </p>
             </div>
             <div className="self-center sm:self-auto">
@@ -79,6 +105,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile, onUpdateP
             <span className="text-xs font-bold text-[#45D483] flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4" /> Profile Updated!
             </span>
+          )}
+          {saveError && (
+            <span className="text-xs font-bold text-[#F05D5E]">{saveError}</span>
           )}
         </div>
 
@@ -165,7 +194,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userProfile, onUpdateP
           <button
             id="btn-save-profile"
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all"
+            disabled={isSaving}
+            className="px-6 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-black text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             Save Biometric Updates
