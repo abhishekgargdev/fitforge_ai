@@ -1,7 +1,7 @@
 import { todayDate } from "@/lib/nutrition/map";
 import { AIUsageModel } from "@/models/AIUsage";
 
-export type AiFeature = "chat" | "nutrition-plan" | "workout-plan" | "progress-analysis";
+export type AiFeature = "chat" | "nutrition-plan" | "workout-plan" | "progress-analysis" | "nutrition-image";
 
 export async function recordAiUsage(input: {
   userId: unknown;

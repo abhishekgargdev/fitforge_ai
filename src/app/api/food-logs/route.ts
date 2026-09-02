@@ -115,6 +115,7 @@ export async function POST(request: Request) {
       carbsGrams: snapshot.carbsGrams,
       fatGrams: snapshot.fatGrams,
       fiberGrams: snapshot.fiberGrams,
+      source: body.source || "manual",
       loggedAt: new Date(),
       date: todayDate(body.date),
     });

@@ -13,6 +13,7 @@ export const foodLogCreateSchema = z.object({
   fatGrams: z.number().min(0).optional(),
   fiberGrams: z.number().min(0).optional(),
   date: z.string().optional(),
+  source: z.enum(["manual", "ai_chat", "ai_image", "barcode"]).optional(),
 });
 
 export const foodLogUpdateSchema = foodLogCreateSchema.partial().extend({

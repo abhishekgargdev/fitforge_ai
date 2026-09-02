@@ -5,7 +5,7 @@ const aiUsageSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     feature: {
       type: String,
-      enum: ["chat", "nutrition-plan", "workout-plan", "progress-analysis"],
+      enum: ["chat", "nutrition-plan", "workout-plan", "progress-analysis", "nutrition-image"],
       required: true,
       index: true,
     },

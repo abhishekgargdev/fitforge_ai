@@ -18,6 +18,11 @@ const foodLogSchema = new Schema(
     carbsGrams: { type: Number, required: true },
     fatGrams: { type: Number, required: true },
     fiberGrams: { type: Number, default: 0 },
+    source: {
+      type: String,
+      enum: ["manual", "ai_chat", "ai_image", "barcode"],
+      default: "manual",
+    },
     loggedAt: { type: Date, default: Date.now },
     date: { type: String, required: true, index: true },
   },

@@ -5,8 +5,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { FoodItem, MealCategory, LoggedMealEntry } from '@/types';
-import { Search, Plus, X, Flame } from 'lucide-react';
+import { Search, Plus, X, Flame, Camera, Upload, Sparkles, ShieldCheck } from 'lucide-react';
 import { LoadingButton } from '@/components/common/LoadingButton';
+import { OriginBadge } from '@/components/common/OriginBadge';
 
 interface FoodLoggerModalProps {
   onClose: () => void;
@@ -57,7 +58,20 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
   const [selectedMeal, setSelectedMeal] = useState<MealCategory>(defaultMeal);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [servingMultiplier, setServingMultiplier] = useState(1);
-  const [activeTab, setActiveTab] = useState<'search' | 'custom'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'custom' | 'photo'>('search');
+
+  // Photo Vision state
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [visionEstimate, setVisionEstimate] = useState<Array<{
+    foodName: string;
+    estimatedQuantity: string;
+    caloriesKcal: number;
+    proteinGrams: number;
+    carbsGrams: number;
+    fatGrams: number;
+    fiberGrams: number;
+  }> | null>(null);
 
   const [customName, setCustomName] = useState('');
   const [customServing, setCustomServing] = useState('100g');
@@ -204,6 +218,18 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('photo')}
+            className={`pb-2 px-4 text-xs font-bold transition-colors flex items-center gap-1.5 ${
+              activeTab === 'photo'
+                ? 'text-[#B8F34A] border-b-2 border-[#B8F34A]'
+                : 'text-[#9AA3A0] hover:text-white'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            AI Photo Log
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('custom')}
             className={`pb-2 px-4 text-xs font-bold transition-colors ${
               activeTab === 'custom'
@@ -346,6 +372,227 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                 Add to {selectedMeal}
               </LoadingButton>
             </div>
+          </div>
+        ) : activeTab === 'photo' ? (
+          <div className="mt-4 space-y-4">
+            <div className="p-3 bg-[#181D22] border border-[#252B30] rounded-2xl flex items-center gap-2.5 text-xs text-[#9AA3A0]">
+              <ShieldCheck className="w-4 h-4 text-[#45D483] shrink-0" />
+              <span>
+                Your photo is processed strictly in memory for nutrition estimation and is <strong>never stored on disk or servers</strong>.
+              </span>
+            </div>
+
+            {!visionEstimate ? (
+              <div className="border-2 border-dashed border-[#252B30] hover:border-[#B8F34A]/50 rounded-2xl p-6 text-center transition-all bg-[#0B0D0F]">
+                {photoBase64 ? (
+                  <div className="space-y-4">
+                    <img
+                      src={photoBase64}
+                      alt="Food preview"
+                      className="max-h-48 mx-auto rounded-xl border border-[#252B30] object-cover"
+                    />
+                    <div className="flex justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoBase64(null);
+                          setVisionEstimate(null);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#181D22] text-xs font-bold text-[#9AA3A0] hover:text-white"
+                      >
+                        Choose Different Photo
+                      </button>
+                      <LoadingButton
+                        type="button"
+                        isLoading={analyzingPhoto}
+                        loadingText="Analyzing with Vision AI…"
+                        onClick={async () => {
+                          if (!photoBase64) return;
+                          setAnalyzingPhoto(true);
+                          setErrorMsg('');
+                          try {
+                            const res = await fetch('/api/ai/food-image-log', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                imageBase64: photoBase64,
+                                mealCategory: selectedMeal,
+                              }),
+                            });
+                            const json = await res.json();
+                            if (!res.ok) throw new Error(json.error?.message || 'Failed to analyze photo.');
+                            setVisionEstimate(json.data.estimate.identifiedFoods || []);
+                          } catch (err) {
+                            setErrorMsg(err instanceof Error ? err.message : 'Unable to analyze image.');
+                          } finally {
+                            setAnalyzingPhoto(false);
+                          }
+                        }}
+                        icon={<Sparkles className="w-4 h-4" />}
+                        className="px-6"
+                      >
+                        Analyze Photo
+                      </LoadingButton>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer block space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#B8F34A]/10 text-[#B8F34A] flex items-center justify-center mx-auto">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">Upload or Capture Food Photo</span>
+                      <span className="text-[11px] text-[#9AA3A0]">PNG, JPG, or WEBP up to 5MB</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setPhotoBase64(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#B8F34A]" />
+                    AI Vision Estimate
+                  </span>
+                  <OriginBadge origin="AI_RECOMMENDATION" />
+                </div>
+
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {visionEstimate.map((item, idx) => (
+                    <div key={idx} className="p-3 bg-[#181D22] border border-[#252B30] rounded-xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <input
+                          type="text"
+                          value={item.foodName}
+                          onChange={(e) => {
+                            const updated = [...visionEstimate];
+                            updated[idx].foodName = e.target.value;
+                            setVisionEstimate(updated);
+                          }}
+                          className="bg-[#0B0D0F] border border-[#252B30] rounded-lg px-2.5 py-1 text-xs text-white font-bold outline-none focus:border-[#B8F34A]"
+                        />
+                        <span className="text-[11px] text-[#B8F34A] font-bold">{item.caloriesKcal} kcal</span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <label className="text-[10px] text-[#5DA9FF] block">Protein (g)</label>
+                          <input
+                            type="number"
+                            value={item.proteinGrams}
+                            onChange={(e) => {
+                              const updated = [...visionEstimate];
+                              updated[idx].proteinGrams = Number(e.target.value) || 0;
+                              setVisionEstimate(updated);
+                            }}
+                            className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-lg px-2 py-1 text-xs text-white text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[#F5B942] block">Carbs (g)</label>
+                          <input
+                            type="number"
+                            value={item.carbsGrams}
+                            onChange={(e) => {
+                              const updated = [...visionEstimate];
+                              updated[idx].carbsGrams = Number(e.target.value) || 0;
+                              setVisionEstimate(updated);
+                            }}
+                            className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-lg px-2 py-1 text-xs text-white text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[#F05D5E] block">Fat (g)</label>
+                          <input
+                            type="number"
+                            value={item.fatGrams}
+                            onChange={(e) => {
+                              const updated = [...visionEstimate];
+                              updated[idx].fatGrams = Number(e.target.value) || 0;
+                              setVisionEstimate(updated);
+                            }}
+                            className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-lg px-2 py-1 text-xs text-white text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[#9AA3A0] block">Serving</label>
+                          <input
+                            type="text"
+                            value={item.estimatedQuantity}
+                            onChange={(e) => {
+                              const updated = [...visionEstimate];
+                              updated[idx].estimatedQuantity = e.target.value;
+                              setVisionEstimate(updated);
+                            }}
+                            className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-lg px-2 py-1 text-xs text-white text-center"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisionEstimate(null);
+                      setPhotoBase64(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-[#181D22] text-xs font-bold text-[#9AA3A0] hover:text-white"
+                  >
+                    Reset Photo
+                  </button>
+                  <LoadingButton
+                    type="button"
+                    isLoading={saving}
+                    loadingText="Saving…"
+                    onClick={async () => {
+                      if (!visionEstimate || !visionEstimate.length) return;
+                      setSaving(true);
+                      setErrorMsg('');
+                      try {
+                        for (const item of visionEstimate) {
+                          await persistLog({
+                            name: item.foodName,
+                            serving: item.estimatedQuantity || '1 portion',
+                            mealCategory: selectedMeal,
+                            caloriesKcal: item.caloriesKcal,
+                            proteinGrams: item.proteinGrams,
+                            carbsGrams: item.carbsGrams,
+                            fatGrams: item.fatGrams,
+                            fiberGrams: item.fiberGrams,
+                            source: 'ai_image',
+                          });
+                        }
+                      } catch (err) {
+                        setErrorMsg(err instanceof Error ? err.message : 'Unable to confirm log.');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    icon={<Plus className="w-4 h-4" />}
+                    className="px-6"
+                  >
+                    Confirm & Log Food
+                  </LoadingButton>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleLogCustom} className="mt-4 space-y-3">

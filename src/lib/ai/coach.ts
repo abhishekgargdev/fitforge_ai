@@ -2,6 +2,7 @@ import { generateStructuredJson } from "@/lib/ai/orchestrator";
 import { coachSystemPrompt, coachUserPrompt } from "@/lib/ai/prompts/coach";
 import { coachReplySchema } from "@/lib/ai/schemas/coach";
 import { recordAiUsage } from "@/lib/ai/usage";
+import { foodLogFromText } from "@/lib/ai/text-log";
 import { coachContextFromDashboard, getDashboardData } from "@/lib/dashboard/compose";
 import { AIConversationModel } from "@/models/AIConversation";
 import type { AIChatMessage } from "@/types";
@@ -56,6 +57,13 @@ export async function generateCoachReply(input: {
   const dashboard = await getDashboardData(input.userId);
   const contextJson = JSON.stringify(coachContextFromDashboard(dashboard));
 
+  // Check if user message describes eating food or correcting a food log entry
+  const foodLogResult = await foodLogFromText({
+    userId: input.userId,
+    message: input.message,
+    history,
+  });
+
   try {
     const proposed = await generateStructuredJson({
       system: coachSystemPrompt(),
@@ -68,9 +76,14 @@ export async function generateCoachReply(input: {
     });
     await recordAiUsage({ userId: input.userId, feature: "chat", ok: true });
 
+    let finalReply = proposed.reply;
+    if (foodLogResult.isFoodLog && foodLogResult.confirmationText) {
+      finalReply = `${foodLogResult.confirmationText}\n\n${proposed.reply}`;
+    }
+
     conversation.messages.push({
       role: "assistant",
-      text: proposed.reply,
+      text: finalReply,
       origin: "AI_RECOMMENDATION",
       createdAt: new Date(),
     });

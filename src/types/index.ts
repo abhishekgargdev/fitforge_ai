@@ -324,6 +324,7 @@ export interface LoggedMealEntry {
   fatGrams: number;
   fiberGrams?: number;
   timeLogged: string;
+  source?: "manual" | "ai_chat" | "ai_image" | "barcode";
 }
 
 export type FoodLog = LoggedMealEntry;
