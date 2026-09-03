@@ -25,6 +25,8 @@ const sessionExerciseSchema = new Schema(
     tips: { type: [String], default: [] },
     restSeconds: { type: Number, required: true },
     aiNote: { type: String, default: "" },
+    skipped: { type: Boolean, default: false },
+    skippedReason: { type: String, default: "" },
     sets: { type: [sessionSetSchema], default: [] },
   },
   { _id: false }

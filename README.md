@@ -49,8 +49,8 @@
 - **Database & ODM**: [MongoDB Atlas](https://www.mongodb.com/) + [Mongoose 9](https://mongoosejs.com/)
 - **Authentication**: NextAuth.js (Credentials + OAuth) & bcryptjs password hashing
 - **AI Orchestrator**: Internal multi-provider fallback engine (`src/lib/ai/orchestrator.ts`)
-  - **Text & Reasoning**: NVIDIA NIM (`nvidia/nemotron-3-ultra-550b`) & Rotating Google Gemini Key Pool (`gemini-2.5-flash`)
-  - **Vision & Image Analysis**: NVIDIA NIM (`meta/llama-3.2-11b-vision-instruct`)
+  - **Text & Reasoning**: NVIDIA NIM (`nvidia/nemotron-3-ultra-550b`) & Rotating Google Gemini Key Pool (`gemini-3.6-flash`)
+  - **Vision & Image Analysis**: NVIDIA NIM (`meta/llama-3.2-11b-vision-instruct`) & Google Gemini Key Pool (`gemini-3.6-flash`)
 - **External Data Providers**:
   - ExerciseDB V1 (Exercise catalog & animated GIFs)
   - USDA FoodData Central & Open Food Facts (Nutrition database & Barcodes)

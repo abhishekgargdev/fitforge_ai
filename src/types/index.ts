@@ -242,6 +242,8 @@ export interface ActiveWorkoutExercise {
   sets: ActiveWorkoutSet[];
   restSeconds: number;
   aiNote?: string;
+  skipped?: boolean;
+  skippedReason?: string;
 }
 
 export interface WorkoutExerciseItem {
@@ -283,6 +285,8 @@ export interface WorkoutSplitDay {
   isRestDay: boolean;
   intensityLevel?: "light" | "moderate" | "hard";
   locked?: boolean;
+  skipped?: boolean;
+  skipReason?: string;
   workout?: WorkoutTemplate;
 }
 

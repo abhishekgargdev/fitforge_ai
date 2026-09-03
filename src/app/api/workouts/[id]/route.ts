@@ -52,7 +52,7 @@ export async function PUT(
     });
     if (!workout) return fail("Active workout not found.", 404, "WORKOUT_NOT_FOUND");
 
-    workout.exercises = workout.exercises.map((ex: SessionExerciseLike) => {
+    workout.exercises = workout.exercises.map((ex: any) => {
       const incoming = parsed.data.exercises.find(
         (item) => item.exerciseId === String(ex.exercise)
       );
@@ -62,6 +62,8 @@ export async function PUT(
         ...base,
         restSeconds: incoming.restSeconds ?? ex.restSeconds,
         aiNote: incoming.aiNote ?? ex.aiNote,
+        skipped: incoming.skipped ?? ex.skipped ?? false,
+        skippedReason: incoming.skippedReason ?? ex.skippedReason ?? "",
         sets: incoming.sets,
       };
     });

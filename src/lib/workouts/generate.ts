@@ -6,7 +6,7 @@ import { catalogNamesForPlanner, resolvePlanDays } from "@/lib/workouts/resolve"
 import { WorkoutPlanModel } from "@/models/WorkoutPlan";
 
 export type PlannerInput = {
-  goal: string;
+  goal: string | string[];
   daysPerWeek: number;
   trainingDays?: string[];
   duration: number;
@@ -14,6 +14,7 @@ export type PlannerInput = {
   equipment: string[];
   focusMuscles: string[];
   preferences?: string;
+  planIntent?: string | string[];
 };
 
 const DAY_MAP: Record<string, string> = {
@@ -84,7 +85,7 @@ export async function generateAndSaveWorkoutPlan(
     aiPlan = await generateStructuredJson({
       system: workoutPlanSystemPrompt(),
       user: workoutPlanUserPrompt({
-        goal: input.goal,
+        goal: Array.isArray(input.goal) ? input.goal.join(", ") : input.goal,
         daysPerWeek: input.daysPerWeek,
         trainingDays: effectiveDays,
         duration: input.duration,
@@ -92,6 +93,11 @@ export async function generateAndSaveWorkoutPlan(
         equipment: input.equipment,
         focusMuscles: input.focusMuscles,
         preferences: input.preferences || "",
+        planIntent: input.planIntent
+          ? Array.isArray(input.planIntent)
+            ? input.planIntent.join(", ")
+            : input.planIntent
+          : undefined,
         catalog,
         isFirstPlan,
         completedSessionsCount: completedSessions,

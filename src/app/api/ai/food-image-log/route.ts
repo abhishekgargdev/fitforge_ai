@@ -6,8 +6,10 @@ import { foodImageEstimateSchema } from "@/lib/ai/schemas/food-log";
 import { recordAiUsage } from "@/lib/ai/usage";
 
 export async function POST(request: Request) {
+  let session: Awaited<ReturnType<typeof requireSessionUser>> | null = null;
+
   try {
-    const session = await requireSessionUser();
+    session = await requireSessionUser();
     if (!session) return fail("Unauthorized", 401, "UNAUTHORIZED");
 
     const json = await request.json();
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
     return ok({ estimate });
   } catch (error) {
     console.error("[ai:food-image-log]", error);
-    await recordAiUsage({ userId: "system", feature: "nutrition-image", ok: false }).catch(() => undefined);
+    await recordAiUsage({ userId: session?.user?._id, feature: "nutrition-image", ok: false }).catch(() => undefined);
     return fail("Unable to analyze food image.", 500, "FOOD_IMAGE_LOG_FAILED");
   }
 }

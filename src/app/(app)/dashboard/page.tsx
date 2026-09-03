@@ -39,6 +39,8 @@ type DashboardPayload = {
     planId: string;
     dayIndex: number;
     isRestDay: boolean;
+    isSkipped: boolean;
+    skipReason: string;
     focus: string;
     todayWorkout: WorkoutTemplate;
   };
@@ -95,6 +97,8 @@ export default function DashboardPage() {
         nutritionGoals={data.nutrition.goals}
         todayWorkout={data.workout.todayWorkout || emptyWorkout}
         isRestDay={data.workout.isRestDay}
+        isSkipped={data.workout.isSkipped}
+        skipReason={data.workout.skipReason}
         workoutFocus={data.workout.focus}
         chartSeries={data.progress.series}
         range={range}
@@ -110,7 +114,7 @@ export default function DashboardPage() {
           else router.push("/dashboard");
         }}
         onStartWorkout={async () => {
-          if (!data.workout.planId || data.workout.isRestDay) return;
+          if (!data.workout.planId || data.workout.isRestDay || data.workout.isSkipped) return;
           setWorkoutStartOpen(true);
         }}
         onOpenFoodLogger={() => setLoggerOpen(true)}

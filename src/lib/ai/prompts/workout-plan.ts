@@ -23,6 +23,7 @@ export function workoutPlanUserPrompt(input: {
   equipment: string[];
   focusMuscles: string[];
   preferences: string;
+  planIntent?: string;
   catalog: string[];
   isFirstPlan?: boolean;
   completedSessionsCount?: number;
@@ -56,6 +57,7 @@ User Profile & Pacing Inputs:
 - Equipment Available: ${input.equipment.join(", ") || "full gym"}
 - Focus Muscles Requested: ${input.focusMuscles.join(", ") || "balanced physique"}
 - Preferences / Notes: ${input.preferences || "none"}
+${input.planIntent ? `- Plan Intent: ${input.planIntent}\n` : ""}
 ${input.lockedConstraints ? `\nLOCKED CONSTRAINTS (do NOT change or overwrite these days/exercises):\n${input.lockedConstraints}\n` : ""}
 
 Allowed exercise names (use these exact names when possible):

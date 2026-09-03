@@ -14,5 +14,7 @@ export type SessionExerciseLike = {
   sets: SessionSetLike[];
   restSeconds?: number;
   aiNote?: string;
+  skipped?: boolean;
+  skippedReason?: string;
   toObject?: () => Record<string, unknown>;
 };

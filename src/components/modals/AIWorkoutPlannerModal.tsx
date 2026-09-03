@@ -31,6 +31,9 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
     userProfile.availableEquipment || ['full_gym', 'barbell', 'dumbbells']
   );
   const [focusMuscles, setFocusMuscles] = useState<string[]>(['Chest', 'Back', 'Shoulders', 'Legs']);
+  const [strategy, setStrategy] = useState<'hypertrophy' | 'strength' | 'fat_loss' | 'conditioning' | 'recovery'>('hypertrophy');
+  const [workoutStyle, setWorkoutStyle] = useState<'gym' | 'home' | 'hybrid'>('gym');
+  const [homeWorkoutPrompt, setHomeWorkoutPrompt] = useState('');
   const [preferences, setPreferences] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -104,6 +107,10 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
           experience,
           equipment: selectedEquipment,
           focusMuscles,
+          strategy,
+          workoutStyle,
+          homeWorkoutPrompt,
+          planIntent: `${strategy} ${workoutStyle === 'home' ? 'home workout' : workoutStyle === 'hybrid' ? 'hybrid gym/home workout' : 'gym workout'}${homeWorkoutPrompt ? ` — ${homeWorkoutPrompt}` : ''}`,
           preferences,
         }),
       });
@@ -341,6 +348,64 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
                 })}
               </div>
             </div>
+
+            {/* Strategy / workout mode */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                  Workout Strategy
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['hypertrophy', 'strength', 'fat_loss', 'conditioning'] as const).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setStrategy(item)}
+                      className={`px-2 py-2 rounded-xl text-[11px] font-bold capitalize transition-all ${
+                        strategy === item ? 'bg-[#B8F34A] text-[#0B0D0F]' : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                      }`}
+                    >
+                      {item.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                  Workout Setting
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['gym', 'home', 'hybrid'] as const).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setWorkoutStyle(item)}
+                      className={`px-2 py-2 rounded-xl text-[11px] font-bold capitalize transition-all ${
+                        workoutStyle === item ? 'bg-[#5DA9FF] text-[#0B0D0F]' : 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] hover:text-white'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {workoutStyle !== 'gym' && (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#9AA3A0] mb-2">
+                  Home Workout Prompt
+                </label>
+                <textarea
+                  value={homeWorkoutPrompt}
+                  onChange={(e) => setHomeWorkoutPrompt(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. bodyweight only, no equipment, 20-minute circuit, low-impact option for travel days"
+                  className="w-full bg-[#0B0D0F] border border-[#252B30] rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-[#9AA3A0]/50 focus:border-[#B8F34A] outline-none resize-none"
+                />
+              </div>
+            )}
 
             {/* Preferences */}
             <div>

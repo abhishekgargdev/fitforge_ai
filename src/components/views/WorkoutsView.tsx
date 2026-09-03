@@ -65,9 +65,31 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
     equipment: string;
   } | null>(null);
 
+  const weekdayOrder = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayName = weekdayOrder[new Date().getDay()];
+  const formatDayDate = (dayName: string) => {
+    const today = new Date();
+    const dayIndex = weekdayOrder.indexOf(dayName) >= 0 ? weekdayOrder.indexOf(dayName) : today.getDay();
+    const target = new Date(today);
+    target.setHours(0, 0, 0, 0);
+    target.setDate(today.getDate() + (dayIndex - today.getDay()));
+    return target.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
   const firstTrainingIndex = currentSplit.days.findIndex((day) => !day.isRestDay && day.workout);
-  const todayIndex = firstTrainingIndex >= 0 ? firstTrainingIndex : 0;
-  const todayWorkout = currentSplit.days[todayIndex]?.workout;
+  const todayIndex = currentSplit.days.findIndex((day) => {
+    const normalized = day.dayName?.toLowerCase() ?? '';
+    const todayKey = todayName.toLowerCase();
+    return normalized === todayKey || normalized.startsWith(todayKey);
+  });
+  const defaultSelectedIndex = todayIndex >= 0 ? todayIndex : (firstTrainingIndex >= 0 ? firstTrainingIndex : 0);
+
+  React.useEffect(() => {
+    setSelectedDayIndex(defaultSelectedIndex);
+  }, [defaultSelectedIndex]);
+
+  const todayWorkout = currentSplit.days[defaultSelectedIndex]?.workout;
+  const selectedDay = currentSplit.days[selectedDayIndex];
   const isManualMode = currentSplit.planMode === 'manual';
 
   const handleToggleLock = async (dayName: string, exerciseId?: string, currentLocked?: boolean) => {
@@ -88,6 +110,29 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
       console.error('Failed to toggle lock:', err);
     } finally {
       setLockingDay(null);
+    }
+  };
+
+  const handleToggleSkipDay = async (dayName: string, currentSkipped?: boolean) => {
+    if (!currentSplit.id) return;
+
+    const reason = window.prompt(
+      currentSkipped ? 'What is the reason for restoring this day?' : 'Why are you skipping this workout day?',
+      currentSkipped ? 'Recovered / rescheduled' : 'Travel / recovery / schedule'
+    );
+
+    try {
+      await fetch(`/api/workout-plans/${currentSplit.id}/days/${encodeURIComponent(dayName)}/skip`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skipped: !currentSkipped,
+          reason: reason?.trim() || (currentSkipped ? 'Restored by user' : 'Skipped by user'),
+        }),
+      });
+      if (onRefreshSplit) onRefreshSplit();
+    } catch (err) {
+      console.error('Failed to toggle day skip:', err);
     }
   };
 
@@ -141,11 +186,16 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
           <button
             id="btn-workouts-start-today"
             type="button"
-            onClick={() => todayWorkout && onStartWorkout(todayWorkout, todayIndex)}
-            className="px-5 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all hover:scale-105"
+            disabled={Boolean(currentSplit.days[defaultSelectedIndex]?.skipped) || !todayWorkout}
+            onClick={() => todayWorkout && onStartWorkout(todayWorkout, defaultSelectedIndex)}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all hover:scale-105 ${
+              currentSplit.days[defaultSelectedIndex]?.skipped || !todayWorkout
+                ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
+                : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
+            }`}
           >
             <Play className="w-4 h-4 fill-current" />
-            Start Today's Session
+            {currentSplit.days[defaultSelectedIndex]?.skipped ? "Today's Session Skipped" : "Start Today's Session"}
           </button>
         </div>
       </div>
@@ -176,7 +226,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                     : isRest
                     ? 'bg-[#0B0D0F]/40 border-[#252B30]/60 opacity-70 hover:opacity-100'
                     : 'bg-[#181D22]/60 border-[#252B30] hover:border-[#9AA3A0]/40'
-                }`}
+                } ${dayItem.skipped ? 'opacity-85 border-[#FF5C5C]/50' : ''}`}
               >
                 <div className="flex items-center justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5">
@@ -210,7 +260,25 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   </button>
                 </div>
 
-                {isRest ? (
+                <div className="text-[10px] text-[#9AA3A0] mt-1">
+                  {formatDayDate(dayItem.dayName ?? dayItem.day ?? 'Mon')}
+                </div>
+
+                {dayItem.skipped ? (
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-[#FF8E8E]">Skipped</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSkipDay(dayItem.dayName, true);
+                      }}
+                      className="px-1.5 py-0.5 rounded bg-[#FF5C5C]/10 border border-[#FF5C5C]/30 text-[#FF8E8E] text-[9px] font-bold"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                ) : isRest ? (
                   <div className="mt-2 flex items-center justify-between">
                     <div>
                       <span className="text-[11px] font-bold text-[#9AA3A0] block">Active Recovery</span>
@@ -254,6 +322,11 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#B8F34A]/15 text-[#B8F34A]">
                     {currentSplit.days[selectedDayIndex].workout?.durationMinutes} min
                   </span>
+                  {currentSplit.days[selectedDayIndex].skipped && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FF5C5C]/15 text-[#FF8E8E] border border-[#FF5C5C]/30">
+                      Skipped
+                    </span>
+                  )}
                   {currentSplit.days[selectedDayIndex].intensityLevel && (
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
@@ -275,17 +348,34 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  currentSplit.days[selectedDayIndex].workout &&
-                  onStartWorkout(currentSplit.days[selectedDayIndex].workout!, selectedDayIndex)
-                }
-                className="px-4 py-2 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] font-bold text-xs flex items-center gap-1.5 shadow-sm"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Launch This Session
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedDay?.skipped && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSkipDay(String(selectedDay.dayName), true)}
+                    className="px-3 py-2 rounded-xl border border-[#FF5C5C]/35 bg-[#FF5C5C]/10 text-[#FF8E8E] text-xs font-bold"
+                  >
+                    Restore Day
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={Boolean(selectedDay?.skipped) || selectedDay?.isRestDay}
+                  onClick={() =>
+                    currentSplit.days[selectedDayIndex].workout &&
+                    !selectedDay?.skipped &&
+                    onStartWorkout(currentSplit.days[selectedDayIndex].workout!, selectedDayIndex)
+                  }
+                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${
+                    selectedDay?.skipped || selectedDay?.isRestDay
+                      ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
+                      : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
+                  }`}
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  {selectedDay?.skipped ? 'Day Skipped' : 'Launch This Session'}
+                </button>
+              </div>
             </div>
 
             {/* Exercises Grid with Swap, Reorder, & Lock Controls */}

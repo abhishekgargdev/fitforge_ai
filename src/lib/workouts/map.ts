@@ -15,6 +15,8 @@ export function toSplitDto(plan: {
     dayName: string;
     focus?: string;
     isRestDay?: boolean;
+    skipped?: boolean;
+    skipReason?: string;
     workout?: {
       name: string;
       durationMinutes: number;
@@ -49,6 +51,8 @@ export function toSplitDto(plan: {
       day: day.dayName,
       focus: day.focus || "",
       isRestDay: Boolean(day.isRestDay),
+      skipped: Boolean(day.skipped),
+      skipReason: day.skipReason || "",
       locked: Boolean((day as { locked?: boolean }).locked),
       workout: day.isRestDay || !day.workout
         ? undefined

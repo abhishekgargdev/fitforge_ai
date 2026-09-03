@@ -9,6 +9,9 @@ export const plannerInputSchema = z.object({
   equipment: z.array(z.string()).min(1),
   focusMuscles: z.array(z.string()).min(1),
   preferences: z.string().max(400).optional().default(""),
+  planIntent: z.string().max(400).optional().default(""),
+  workoutStyle: z.enum(["gym", "home", "hybrid"]).optional().default("gym"),
+  homeWorkoutPrompt: z.string().max(600).optional().default(""),
 });
 
 export const startWorkoutSchema = z.object({
@@ -23,6 +26,8 @@ export const updateSessionSchema = z.object({
       exerciseId: z.string().min(1),
       restSeconds: z.number().int().min(15).max(300).optional(),
       aiNote: z.string().optional(),
+      skipped: z.boolean().optional(),
+      skippedReason: z.string().optional(),
       sets: z.array(
         z.object({
           setNumber: z.number().int().min(1),

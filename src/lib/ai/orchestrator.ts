@@ -1,6 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Types } from "mongoose";
 import OpenAI from "openai";
 import type { ZodType } from "zod";
+
+const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
+
+export function resolveGeminiModelName(requestedModel?: string) {
+  const preferred = (requestedModel ?? process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL).trim();
+  if (!preferred) return DEFAULT_GEMINI_MODEL;
+
+  const normalized = preferred.toLowerCase();
+  if (normalized.startsWith("gemini-")) return preferred;
+  return DEFAULT_GEMINI_MODEL;
+}
+
+export function isValidAiUsageUserId(value: unknown): value is string | Types.ObjectId {
+  if (typeof value === "string") return Types.ObjectId.isValid(value);
+  return value instanceof Types.ObjectId;
+}
 
 function geminiKeys() {
   return [
@@ -22,7 +39,7 @@ function extractJson(text: string) {
 }
 
 async function geminiJson(system: string, user: string) {
-  const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  const modelName = resolveGeminiModelName();
   let lastError: unknown;
   for (const key of geminiKeys()) {
     try {
@@ -47,6 +64,7 @@ async function nvidiaJson(system: string, user: string) {
   const client = new OpenAI({
     apiKey,
     baseURL: process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1",
+    timeout: 25000,
   });
   const completion = await client.chat.completions.create({
     model: process.env.NVIDIA_MODEL_TEXT || "nvidia/nemotron-3-ultra-550b",
@@ -64,21 +82,22 @@ export async function generateStructuredJson<T>(input: {
   user: string;
   schema: ZodType<T>;
 }): Promise<T> {
-  const attempts: Array<() => Promise<string>> = [
-    () => geminiJson(input.system, input.user),
-    () => nvidiaJson(input.system, input.user),
+  const attempts: Array<{ name: string; run: () => Promise<string> }> = [
+    { name: "gemini-text", run: () => geminiJson(input.system, input.user) },
+    { name: "nvidia-text", run: () => nvidiaJson(input.system, input.user) },
   ];
 
   let lastError: unknown;
-  for (const run of attempts) {
+  for (const provider of attempts) {
     for (let retry = 0; retry < 2; retry += 1) {
       try {
-        const raw = extractJson(await run());
+        const raw = extractJson(await provider.run());
         const parsed = JSON.parse(raw);
         const result = input.schema.safeParse(parsed);
         if (result.success) return result.data;
         lastError = result.error;
       } catch (error) {
+        console.warn(`[ai:orchestrator] Provider ${provider.name} attempt ${retry + 1} failed:`, error);
         lastError = error;
       }
     }
@@ -92,6 +111,7 @@ async function nvidiaVisionJson(system: string, userPrompt: string, imageBase64:
   const client = new OpenAI({
     apiKey,
     baseURL: process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1",
+    timeout: 25000,
   });
 
   const formattedImageUrl = imageBase64.startsWith("data:")
@@ -116,7 +136,7 @@ async function nvidiaVisionJson(system: string, userPrompt: string, imageBase64:
 }
 
 async function geminiVisionJson(system: string, userPrompt: string, imageBase64: string) {
-  const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  const modelName = resolveGeminiModelName();
   const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
   const mimeType = imageBase64.match(/data:([^;]+);/)?.[1] || "image/jpeg";
 
@@ -152,21 +172,22 @@ export async function generateStructuredVisionJson<T>(input: {
   imageBase64: string;
   schema: ZodType<T>;
 }): Promise<T> {
-  const attempts: Array<() => Promise<string>> = [
-    () => nvidiaVisionJson(input.system, input.user, input.imageBase64),
-    () => geminiVisionJson(input.system, input.user, input.imageBase64),
+  const attempts: Array<{ name: string; run: () => Promise<string> }> = [
+    { name: "gemini-vision", run: () => geminiVisionJson(input.system, input.user, input.imageBase64) },
+    { name: "nvidia-vision", run: () => nvidiaVisionJson(input.system, input.user, input.imageBase64) },
   ];
 
   let lastError: unknown;
-  for (const run of attempts) {
+  for (const provider of attempts) {
     for (let retry = 0; retry < 2; retry += 1) {
       try {
-        const raw = extractJson(await run());
+        const raw = extractJson(await provider.run());
         const parsed = JSON.parse(raw);
         const result = input.schema.safeParse(parsed);
         if (result.success) return result.data;
         lastError = result.error;
       } catch (error) {
+        console.warn(`[ai:orchestrator] Provider ${provider.name} attempt ${retry + 1} failed:`, error);
         lastError = error;
       }
     }

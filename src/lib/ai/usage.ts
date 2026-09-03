@@ -1,3 +1,4 @@
+import { isValidAiUsageUserId } from "@/lib/ai/orchestrator";
 import { todayDate } from "@/lib/nutrition/map";
 import { AIUsageModel } from "@/models/AIUsage";
 
@@ -8,6 +9,10 @@ export async function recordAiUsage(input: {
   feature: AiFeature;
   ok: boolean;
 }) {
+  if (!isValidAiUsageUserId(input.userId)) {
+    return;
+  }
+
   try {
     await AIUsageModel.create({
       userId: input.userId,

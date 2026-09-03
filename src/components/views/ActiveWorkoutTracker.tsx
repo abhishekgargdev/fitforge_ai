@@ -95,6 +95,19 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [startWeightKg, setStartWeightKg] = useState<number | undefined>(undefined);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
 
+  const persistPayload = (endWeightKg?: number) => ({
+    durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
+    ...(endWeightKg ? { endWeightKg } : {}),
+    exercises: exercises.map((item) => ({
+      exerciseId: item.exercise.id,
+      restSeconds: item.restSeconds,
+      aiNote: item.aiNote,
+      skipped: item.skipped ?? false,
+      skippedReason: item.skippedReason ?? "",
+      sets: item.sets,
+    })),
+  });
+
   const currentExerciseData = exercises[currentExIndex];
   const currentEx = currentExerciseData.exercise;
 
@@ -157,16 +170,41 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     });
   };
 
-  const persistPayload = (endWeightKg?: number) => ({
-    durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
-    ...(endWeightKg ? { endWeightKg } : {}),
-    exercises: exercises.map((item) => ({
-      exerciseId: item.exercise.id,
-      restSeconds: item.restSeconds,
-      aiNote: item.aiNote,
-      sets: item.sets,
-    })),
-  });
+  const handleSkipExercise = async () => {
+    const reason = window.prompt('Why are you skipping this exercise?', 'Recovery / equipment issue / low energy') || 'Skipped mid-session';
+
+    setExercises((prev) => {
+      const updated = [...prev];
+      const ex = { ...updated[currentExIndex], skipped: true, skippedReason: reason };
+      updated[currentExIndex] = ex;
+      return updated;
+    });
+
+    const nextPayload = {
+      ...persistPayload(),
+      exercises: exercises.map((item, idx) => ({
+        exerciseId: item.exercise.id,
+        restSeconds: item.restSeconds,
+        aiNote: item.aiNote,
+        skipped: idx === currentExIndex ? true : item.skipped ?? false,
+        skippedReason: idx === currentExIndex ? reason : item.skippedReason ?? '',
+        sets: item.sets,
+      })),
+    };
+
+    try {
+      await fetch(`/api/workouts/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextPayload),
+      });
+      if (currentExIndex < exercises.length - 1) {
+        setCurrentExIndex((prev) => Math.min(prev + 1, exercises.length - 1));
+      }
+    } catch (error) {
+      console.error('Failed to save skipped exercise:', error);
+    }
+  };
 
   const handleFinish = async (endWeightKg?: number) => {
     if (isFinishing) return;
@@ -267,13 +305,22 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                   Target: <strong className="text-white">{currentEx.targetMuscle}</strong> | Difficulty: {currentEx.difficulty}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSwapModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all shrink-0"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Swap
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSkipExercise}
+                  className="px-3 py-1.5 rounded-xl bg-[#FF5C5C]/10 border border-[#FF5C5C]/35 text-[#FF8E8E] hover:bg-[#FF5C5C] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSwapModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Swap
+                </button>
+              </div>
             </div>
 
             {/* AI Real-time Form / Execution Note */}

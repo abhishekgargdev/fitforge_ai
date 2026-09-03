@@ -17,8 +17,8 @@ import { emptyWorkout } from "@/lib/dashboard/empty";
 
 export function todayPlanIndex(daysLength: number) {
   if (daysLength <= 0) return 0;
-  const mondayBased = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  return mondayBased % daysLength;
+  const todayIndex = new Date().getDay();
+  return todayIndex % daysLength;
 }
 
 export async function getDashboardData(userId: unknown, range: ProgressRange = "3m") {
@@ -52,19 +52,16 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
   const split = activePlan ? toSplitDto(activePlan) : null;
   let dayIndex = 0;
   if (split && split.days.length) {
-    const firstTraining = split.days.findIndex((day) => !day.isRestDay && day.workout);
+    const firstTraining = split.days.findIndex((day) => !day.isRestDay && !day.skipped && day.workout);
     const calendarIndex = todayPlanIndex(split.days.length);
     const calendarDay = split.days[calendarIndex];
-    dayIndex =
-      calendarDay && !calendarDay.isRestDay && calendarDay.workout
-        ? calendarIndex
-        : firstTraining >= 0
-          ? firstTraining
-          : calendarIndex;
+    const dayIsUsable = Boolean(calendarDay && !calendarDay.isRestDay && !calendarDay.skipped && calendarDay.workout);
+    dayIndex = dayIsUsable ? calendarIndex : firstTraining >= 0 ? firstTraining : calendarIndex;
   }
   const todayDay = split?.days[dayIndex];
   const todayWorkout = todayDay?.workout || emptyWorkout;
-  const isRestDay = Boolean(!todayDay || todayDay.isRestDay || !todayDay.workout);
+  const isSkipped = Boolean(todayDay?.skipped);
+  const isRestDay = Boolean(!todayDay || todayDay.isRestDay || !todayDay.workout || isSkipped);
 
   const meals = foodLogs.map(toLogDto);
   const nutritionTotals = meals.reduce(
@@ -135,6 +132,8 @@ export async function getDashboardData(userId: unknown, range: ProgressRange = "
       planTitle: split?.title || "",
       dayIndex,
       isRestDay,
+      isSkipped,
+      skipReason: todayDay?.skipReason || "",
       focus: todayDay?.focus || "",
       todayWorkout,
     },

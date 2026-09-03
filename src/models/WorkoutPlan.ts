@@ -46,6 +46,9 @@ const splitDaySchema = new Schema(
       default: "moderate",
     },
     locked: { type: Boolean, default: false },
+    skipped: { type: Boolean, default: false },
+    skipReason: { type: String, default: "" },
+    scheduledDate: { type: Date },
     workout: { type: dayWorkoutSchema, default: undefined },
   },
   { _id: false }

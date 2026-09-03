@@ -30,7 +30,6 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-  ChevronRight,
   Zap,
   Trophy,
   Footprints,
@@ -60,6 +59,8 @@ interface DashboardViewProps {
   };
   todayWorkout: WorkoutTemplate;
   isRestDay?: boolean;
+  isSkipped?: boolean;
+  skipReason?: string;
   workoutFocus?: string;
   chartSeries: Array<{ label: string; value: number }>;
   range: "1m" | "3m" | "6m" | "1y" | "all";
@@ -81,6 +82,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   nutritionGoals,
   todayWorkout,
   isRestDay,
+  isSkipped,
+  skipReason,
   workoutFocus,
   chartSeries,
   range,
@@ -387,10 +390,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     : `${todayWorkout.durationMinutes} min session • ${workoutFocus || todayWorkout.category}`}
                 </p>
               </div>
-              <span className="bg-[#B8F34A]/10 text-[#B8F34A] text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[#B8F34A]/20 uppercase tracking-wider">
-                {isRestDay ? 'REST' : todayWorkout.category}
+              <span
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${
+                  isSkipped
+                    ? 'bg-[#FF5C5C]/10 text-[#FF8E8E] border-[#FF5C5C]/30'
+                    : isRestDay
+                      ? 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
+                      : 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
+                }`}
+              >
+                {isSkipped ? 'SKIPPED' : isRestDay ? 'REST' : todayWorkout.category}
               </span>
             </div>
+
+            {isSkipped && skipReason && (
+              <p className="text-[11px] text-[#FF8E8E] mb-3">
+                Reason: {skipReason}
+              </p>
+            )}
 
             {/* List of exercises */}
             <div className="space-y-2.5 my-2">
@@ -426,7 +443,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               All Workouts
             </button>
-            {isRestDay ? (
+            {isSkipped ? (
+              <button
+                id="btn-dash-skipped-workout"
+                disabled
+                className="flex-1 bg-[#181D22] border border-[#FF5C5C]/30 text-[#FF8E8E] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 opacity-80 cursor-not-allowed"
+              >
+                <Footprints className="w-4 h-4" />
+                DAY SKIPPED
+              </button>
+            ) : isRestDay ? (
               <button
                 id="btn-dash-log-rest-activity"
                 onClick={() => setActivityModalOpen(true)}
@@ -475,7 +501,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onClick={() => onNavigate('recovery')}
           className="px-4 py-2.5 rounded-xl bg-[#181D22] border border-[#252B30] hover:border-[#B8F34A] text-[#F5F7F2] hover:text-white text-xs font-bold flex items-center gap-2 transition-all shrink-0"
         >
-          View Today's Recovery <ChevronRight className="w-4 h-4 text-[#B8F34A]" />
+          View Today's Recovery <ArrowRight className="w-4 h-4 text-[#B8F34A]" />
         </button>
       </section>
 
@@ -582,7 +608,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="mt-4 pt-3 border-t border-[#252B30] text-[11px] font-bold text-[#9AA3A0] hover:text-[#B8F34A] flex items-center justify-between transition-colors"
           >
             <span>Detailed Bio-Analytics</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </section>
