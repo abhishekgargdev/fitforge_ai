@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, type InferSchemaType, type Model } from "mongoose";
 
 const planExerciseSchema = new Schema(
   {
@@ -98,5 +98,10 @@ const workoutPlanSchema = new Schema(
   { timestamps: true, collection: "workoutPlans" }
 );
 
-export const WorkoutPlanModel =
-  models.WorkoutPlan ?? model("WorkoutPlan", workoutPlanSchema);
+export type WorkoutPlanDocument = InferSchemaType<typeof workoutPlanSchema>;
+
+export const WorkoutPlanModel: Model<WorkoutPlanDocument> = model<WorkoutPlanDocument>(
+  "WorkoutPlanV2",
+  workoutPlanSchema,
+  "workoutPlans"
+);
