@@ -349,13 +349,17 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedDay?.skipped && (
+                {!selectedDay?.isRestDay && (
                   <button
                     type="button"
-                    onClick={() => handleToggleSkipDay(String(selectedDay.dayName), true)}
-                    className="px-3 py-2 rounded-xl border border-[#FF5C5C]/35 bg-[#FF5C5C]/10 text-[#FF8E8E] text-xs font-bold"
+                    onClick={() => handleToggleSkipDay(String(selectedDay?.dayName || currentSplit.days[selectedDayIndex].dayName), Boolean(selectedDay?.skipped))}
+                    className={`px-3 py-2 rounded-xl border text-xs font-bold ${
+                      selectedDay?.skipped
+                        ? 'border-[#B8F34A]/35 bg-[#B8F34A]/10 text-[#B8F34A]'
+                        : 'border-[#FF5C5C]/35 bg-[#FF5C5C]/10 text-[#FF8E8E]'
+                    }`}
                   >
-                    Restore Day
+                    {selectedDay?.skipped ? 'Resume Day' : 'Skip Day'}
                   </button>
                 )}
                 <button
