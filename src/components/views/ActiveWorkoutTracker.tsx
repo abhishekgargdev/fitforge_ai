@@ -26,6 +26,14 @@ import {
 } from 'lucide-react';
 import { LoadingButton } from '../common/LoadingButton';
 import { SwapExerciseModal } from '../modals/SwapExerciseModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ActiveWorkoutTrackerProps {
   workout: WorkoutTemplate;
@@ -92,6 +100,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [showCheckin, setShowCheckin] = useState(true);
   const [showEndCheckin, setShowEndCheckin] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
+  const [skipReason, setSkipReason] = useState('Recovery / equipment issue / low energy');
   const [startWeightKg, setStartWeightKg] = useState<number | undefined>(undefined);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
 
@@ -171,7 +181,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   };
 
   const handleSkipExercise = async () => {
-    const reason = window.prompt('Why are you skipping this exercise?', 'Recovery / equipment issue / low energy') || 'Skipped mid-session';
+    const reason = skipReason.trim() || 'Skipped mid-session';
 
     setExercises((prev) => {
       const updated = [...prev];
@@ -203,6 +213,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       }
     } catch (error) {
       console.error('Failed to save skipped exercise:', error);
+    } finally {
+      setSkipDialogOpen(false);
+      setSkipReason('Recovery / equipment issue / low energy');
     }
   };
 
@@ -308,7 +321,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={handleSkipExercise}
+                  onClick={() => setSkipDialogOpen(true)}
                   className="px-3 py-1.5 rounded-xl bg-[#FF5C5C]/10 border border-[#FF5C5C]/35 text-[#FF8E8E] hover:bg-[#FF5C5C] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
                 >
                   Skip
@@ -495,6 +508,55 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
           }}
         />
       )}
+
+      <Dialog open={skipDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSkipDialogOpen(false);
+          setSkipReason('Recovery / equipment issue / low energy');
+        }
+      }}>
+        <DialogContent className="max-w-md bg-[#12161A] border border-[#252B30] text-[#F5F7F2]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Skip this exercise</DialogTitle>
+            <DialogDescription className="text-[#9AA3A0]">
+              Add a short note so the skip is clear in your workout history and next session planning.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="rounded-xl border border-[#252B30] bg-[#0B0D0F] p-3 text-xs text-[#9AA3A0]">
+              Exercise: <span className="font-bold text-white">{currentEx.name}</span>
+            </div>
+            <textarea
+              value={skipReason}
+              onChange={(e) => setSkipReason(e.target.value)}
+              rows={4}
+              className="w-full rounded-xl border border-[#252B30] bg-[#0B0D0F] px-3 py-2 text-sm text-white placeholder:text-[#9AA3A0] focus:border-[#B8F34A] outline-none resize-none"
+              placeholder="Recovery / equipment issue / low energy"
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setSkipDialogOpen(false);
+                setSkipReason('Recovery / equipment issue / low energy');
+              }}
+              className="px-4 py-2 rounded-xl border border-[#252B30] bg-[#181D22] text-[#9AA3A0] text-xs font-bold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipExercise}
+              className="px-4 py-2 rounded-xl bg-[#FF5C5C] text-[#0B0D0F] text-xs font-bold"
+            >
+              Confirm Skip
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {swapModalOpen && (
         <SwapExerciseModal

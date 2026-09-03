@@ -27,6 +27,14 @@ import {
 import { DailyActivityModal } from '../modals/DailyActivityModal';
 import { SwapExerciseModal } from '../modals/SwapExerciseModal';
 import { AddExerciseToPlanModal } from '../modals/AddExerciseToPlanModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface WorkoutsViewProps {
   currentSplit: WorkoutSplitSchedule;
@@ -58,6 +66,9 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   const [lockingDay, setLockingDay] = useState<string | null>(null);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [addExercisePlanOpen, setAddExercisePlanOpen] = useState(false);
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
+  const [skipDialogDay, setSkipDialogDay] = useState<{ dayName: string; currentlySkipped: boolean } | null>(null);
+  const [skipReason, setSkipReason] = useState('');
   const [swapTarget, setSwapTarget] = useState<{
     exerciseId: string;
     exerciseName: string;
@@ -113,13 +124,14 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
     }
   };
 
+  const openSkipDialog = (dayName: string, currentlySkipped: boolean) => {
+    setSkipDialogDay({ dayName, currentlySkipped });
+    setSkipReason(currentlySkipped ? 'Recovered / rescheduled' : 'Travel / recovery / schedule');
+    setSkipDialogOpen(true);
+  };
+
   const handleToggleSkipDay = async (dayName: string, currentSkipped?: boolean) => {
     if (!currentSplit.id) return;
-
-    const reason = window.prompt(
-      currentSkipped ? 'What is the reason for restoring this day?' : 'Why are you skipping this workout day?',
-      currentSkipped ? 'Recovered / rescheduled' : 'Travel / recovery / schedule'
-    );
 
     try {
       await fetch(`/api/workout-plans/${currentSplit.id}/days/${encodeURIComponent(dayName)}/skip`, {
@@ -127,12 +139,16 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           skipped: !currentSkipped,
-          reason: reason?.trim() || (currentSkipped ? 'Restored by user' : 'Skipped by user'),
+          reason: skipReason.trim() || (currentSkipped ? 'Restored by user' : 'Skipped by user'),
         }),
       });
       if (onRefreshSplit) onRefreshSplit();
     } catch (err) {
       console.error('Failed to toggle day skip:', err);
+    } finally {
+      setSkipDialogOpen(false);
+      setSkipDialogDay(null);
+      setSkipReason('');
     }
   };
 
@@ -271,11 +287,11 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleToggleSkipDay(dayItem.dayName, true);
+                        openSkipDialog(dayItem.dayName, true);
                       }}
                       className="px-1.5 py-0.5 rounded bg-[#FF5C5C]/10 border border-[#FF5C5C]/30 text-[#FF8E8E] text-[9px] font-bold"
                     >
-                      Restore
+                      Resume
                     </button>
                   </div>
                 ) : isRest ? (
@@ -352,7 +368,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                 {!selectedDay?.isRestDay && (
                   <button
                     type="button"
-                    onClick={() => handleToggleSkipDay(String(selectedDay?.dayName || currentSplit.days[selectedDayIndex].dayName), Boolean(selectedDay?.skipped))}
+                    onClick={() => openSkipDialog(String(selectedDay?.dayName || currentSplit.days[selectedDayIndex].dayName), Boolean(selectedDay?.skipped))}
                     className={`px-3 py-2 rounded-xl border text-xs font-bold ${
                       selectedDay?.skipped
                         ? 'border-[#B8F34A]/35 bg-[#B8F34A]/10 text-[#B8F34A]'
@@ -640,6 +656,68 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
         isOpen={activityModalOpen}
         onClose={() => setActivityModalOpen(false)}
       />
+
+      <Dialog open={skipDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSkipDialogOpen(false);
+          setSkipDialogDay(null);
+          setSkipReason('');
+        }
+      }}>
+        <DialogContent className="max-w-md bg-[#12161A] border border-[#252B30] text-[#F5F7F2]">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {skipDialogDay?.currentlySkipped ? 'Resume workout day' : 'Skip workout day'}
+            </DialogTitle>
+            <DialogDescription className="text-[#9AA3A0]">
+              {skipDialogDay?.currentlySkipped
+                ? 'Why are you resuming this day? Add the note you want to keep for your history.'
+                : 'Let us know why this day is being skipped so it stays visible in your workout history.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="rounded-xl border border-[#252B30] bg-[#0B0D0F] p-3 text-xs text-[#9AA3A0]">
+              Day: <span className="font-bold text-white">{skipDialogDay?.dayName}</span>
+            </div>
+            <textarea
+              value={skipReason}
+              onChange={(e) => setSkipReason(e.target.value)}
+              rows={4}
+              className="w-full rounded-xl border border-[#252B30] bg-[#0B0D0F] px-3 py-2 text-sm text-white placeholder:text-[#9AA3A0] focus:border-[#B8F34A] outline-none resize-none"
+              placeholder={skipDialogDay?.currentlySkipped ? 'Recovered / rescheduled / lighter day' : 'Travel / recovery / schedule conflict'}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setSkipDialogOpen(false);
+                setSkipDialogDay(null);
+                setSkipReason('');
+              }}
+              className="px-4 py-2 rounded-xl border border-[#252B30] bg-[#181D22] text-[#9AA3A0] text-xs font-bold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!skipDialogDay) return;
+                handleToggleSkipDay(skipDialogDay.dayName, skipDialogDay.currentlySkipped);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold ${
+                skipDialogDay?.currentlySkipped
+                  ? 'bg-[#B8F34A] text-[#0B0D0F]'
+                  : 'bg-[#FF5C5C] text-[#0B0D0F]'
+              }`}
+            >
+              {skipDialogDay?.currentlySkipped ? 'Resume Day' : 'Skip Day'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {swapTarget && (
         <SwapExerciseModal
