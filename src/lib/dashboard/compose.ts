@@ -21,7 +21,7 @@ export function todayPlanIndex(daysLength: number) {
   return todayIndex % daysLength;
 }
 
-export async function getDashboardData(userId: unknown, range: ProgressRange = "3m") {
+export async function getDashboardData(userId: any, range: ProgressRange = "3m") {
   const [user, profile, goal, nutritionGoals, foodLogs, activePlan, measurementRows, latestWeightRow, latestTwoScans, recentSessions] =
     await Promise.all([
       User.findById(userId),

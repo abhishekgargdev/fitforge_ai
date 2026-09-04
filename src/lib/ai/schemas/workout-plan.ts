@@ -6,6 +6,11 @@ export const aiWorkoutExerciseSchema = z.object({
   reps: z.coerce.string().min(1),
   restSeconds: z.number().int().min(15).max(300),
   aiNote: z.string().max(240).optional().default(""),
+  phase: z.enum(["warmup", "cardio", "bodyweight", "main", "cooldown"]).optional().default("main"),
+  trackingType: z.enum(["reps", "timer"]).optional().default("reps"),
+  targetDurationSeconds: z.number().int().optional().default(0),
+  isStretchFallback: z.boolean().optional().default(false),
+  stretchInstructions: z.array(z.string()).optional().default([]),
 });
 
 export const aiWorkoutDaySchema = z.object({

@@ -299,17 +299,55 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         {/* Left Col: Exercise Media & Visual Guide (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-[#12161A] border border-[#252B30] rounded-2xl overflow-hidden p-4">
-            <div className="relative w-full h-56 rounded-xl overflow-hidden bg-black/60 mb-3 border border-[#252B30]">
-              <img
-                src={currentEx.imageUrl}
-                alt={currentEx.name}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm text-[10px] font-bold text-[#B8F34A] border border-[#B8F34A]/30">
-                {currentEx.targetMuscle} • {currentEx.equipment}
+            {/* Phase Badge */}
+            {(() => {
+              const phaseKey = currentExerciseData.phase || currentEx.phase || 'main';
+              const badge = {
+                warmup: { label: 'Phase 1: Warm-Up Stretching', bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30' },
+                cardio: { label: 'Phase 2: Cardio Interval', bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30' },
+                bodyweight: { label: 'Phase 3: Bodyweight Calisthenics', bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/30' },
+                main: { label: 'Phase 4: Main Strength & Machines', bg: 'bg-[#B8F34A]/15', text: 'text-[#B8F34A]', border: 'border-[#B8F34A]/30' },
+                cooldown: { label: 'Phase 5: Cool-Down Relaxation', bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+              }[phaseKey] || { label: 'Strength Movement', bg: 'bg-[#B8F34A]/15', text: 'text-[#B8F34A]', border: 'border-[#B8F34A]/30' };
+
+              return (
+                <div className={`mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  {badge.label}
+                </div>
+              );
+            })()}
+
+            {/* Media Image or Stretch Fallback Card */}
+            {currentEx.imageUrl && !currentExerciseData.isStretchFallback ? (
+              <div className="relative w-full h-56 rounded-xl overflow-hidden bg-black/60 mb-3 border border-[#252B30]">
+                <img
+                  src={currentEx.imageUrl}
+                  alt={currentEx.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm text-[10px] font-bold text-[#B8F34A] border border-[#B8F34A]/30">
+                  {currentEx.targetMuscle} • {currentEx.equipment}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="w-full p-4 rounded-xl bg-[#0B0D0F] border border-amber-500/30 mb-3 text-xs space-y-2">
+                <div className="flex items-center gap-2 text-amber-400 font-bold">
+                  <Sparkles className="w-4 h-4" /> AI Guided Stretch Movement
+                </div>
+                <p className="text-[#9AA3A0]">
+                  Perform this dynamic/static stretching exercise gently to prime your muscles & prevent strain.
+                </p>
+                {currentExerciseData.stretchInstructions && currentExerciseData.stretchInstructions.length > 0 && (
+                  <ul className="list-disc list-inside text-[#F5F7F2] space-y-1 mt-2 font-medium">
+                    {currentExerciseData.stretchInstructions.map((inst, idx) => (
+                      <li key={idx}>{inst}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div className="flex items-start justify-between">
               <div>
@@ -361,7 +399,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Dumbbell className="w-4 h-4 text-[#B8F34A]" />
-                Live Set Tracking
+                {currentExerciseData.trackingType === 'timer' || currentEx.trackingType === 'timer'
+                  ? 'Timer & Duration Tracking'
+                  : 'Live Set Tracking'}
               </h3>
               <button
                 type="button"
@@ -372,90 +412,150 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               </button>
             </div>
 
-            {/* Sets Table */}
+            {/* Sets Table: Reps vs Timer Mode */}
             <div className="space-y-2.5">
-              <div className="grid grid-cols-12 gap-2 px-3 text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0]">
-                <div className="col-span-2">Set</div>
-                <div className="col-span-4 text-center">Weight (kg)</div>
-                <div className="col-span-4 text-center">Reps</div>
-                <div className="col-span-2 text-right">Done</div>
-              </div>
-
-              {currentExerciseData.sets.map((s, sIdx) => (
-                <div
-                  key={sIdx}
-                  className={`grid grid-cols-12 gap-2 p-3 rounded-xl border items-center transition-all ${
-                    s.completed
-                      ? 'bg-[#181D22]/90 border-[#45D483]/50 shadow-sm'
-                      : 'bg-[#181D22]/40 border-[#252B30]'
-                  }`}
-                >
-                  {/* Set number */}
-                  <div className="col-span-2 flex items-center gap-1.5">
-                    <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] font-black text-xs text-white flex items-center justify-center">
-                      {s.setNumber}
-                    </span>
+              {currentExerciseData.trackingType === 'timer' || currentEx.trackingType === 'timer' ? (
+                // Timer / Cardio Mode UI
+                <div className="space-y-3">
+                  <div className="grid grid-cols-12 gap-2 px-3 text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0]">
+                    <div className="col-span-2">Interval</div>
+                    <div className="col-span-6 text-center">Target Duration</div>
+                    <div className="col-span-4 text-right">Status</div>
                   </div>
 
-                  {/* Weight modifier */}
-                  <div className="col-span-4 flex items-center justify-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateSetValue(sIdx, 'actualWeightKg', -2.5)}
-                      className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
-                    >
-                      -
-                    </button>
-                    <span className="font-mono text-sm font-black text-white w-12 text-center">
-                      {s.actualWeightKg}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateSetValue(sIdx, 'actualWeightKg', 2.5)}
-                      className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
-                    >
-                      +
-                    </button>
+                  {currentExerciseData.sets.map((s, sIdx) => {
+                    const durationSec = s.targetDurationSeconds || currentExerciseData.targetDurationSeconds || 300;
+                    const mins = Math.floor(durationSec / 60);
+                    const secs = durationSec % 60;
+
+                    return (
+                      <div
+                        key={sIdx}
+                        className={`grid grid-cols-12 gap-2 p-3.5 rounded-xl border items-center transition-all ${
+                          s.completed
+                            ? 'bg-[#181D22]/90 border-[#45D483]/50 shadow-sm'
+                            : 'bg-[#181D22]/40 border-[#252B30]'
+                        }`}
+                      >
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] font-black text-xs text-white flex items-center justify-center">
+                            {s.setNumber}
+                          </span>
+                        </div>
+
+                        <div className="col-span-6 flex items-center justify-center gap-2 font-mono text-sm font-bold text-cyan-400">
+                          <span>
+                            {mins > 0 ? `${mins}m ${secs > 0 ? `${secs}s` : ''}` : `${secs}s`}
+                          </span>
+                          <span className="text-[10px] text-[#9AA3A0] font-sans font-medium">(Timer)</span>
+                        </div>
+
+                        <div className="col-span-4 flex justify-end">
+                          <button
+                            id={`btn-set-complete-${sIdx}`}
+                            type="button"
+                            onClick={() => handleToggleSet(sIdx)}
+                            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
+                              s.completed
+                                ? 'bg-[#45D483] text-[#0B0D0F] shadow-[0_0_10px_rgba(69,212,131,0.5)]'
+                                : 'bg-[#0B0D0F] border border-cyan-500/40 text-cyan-400 hover:border-cyan-400'
+                            }`}
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            {s.completed ? 'Completed' : 'Mark Done'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Reps / Weight Mode UI
+                <>
+                  <div className="grid grid-cols-12 gap-2 px-3 text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0]">
+                    <div className="col-span-2">Set</div>
+                    <div className="col-span-4 text-center">Weight (kg)</div>
+                    <div className="col-span-4 text-center">Reps</div>
+                    <div className="col-span-2 text-right">Done</div>
                   </div>
 
-                  {/* Reps modifier */}
-                  <div className="col-span-4 flex items-center justify-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateSetValue(sIdx, 'actualReps', -1)}
-                      className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
-                    >
-                      -
-                    </button>
-                    <span className="font-mono text-sm font-black text-white w-8 text-center">
-                      {s.actualReps}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateSetValue(sIdx, 'actualReps', 1)}
-                      className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {/* Complete Button */}
-                  <div className="col-span-2 flex justify-end">
-                    <button
-                      id={`btn-set-complete-${sIdx}`}
-                      type="button"
-                      onClick={() => handleToggleSet(sIdx)}
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                  {currentExerciseData.sets.map((s, sIdx) => (
+                    <div
+                      key={sIdx}
+                      className={`grid grid-cols-12 gap-2 p-3 rounded-xl border items-center transition-all ${
                         s.completed
-                          ? 'bg-[#45D483] text-[#0B0D0F] shadow-[0_0_10px_rgba(69,212,131,0.5)]'
-                          : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:border-[#B8F34A]'
+                          ? 'bg-[#181D22]/90 border-[#45D483]/50 shadow-sm'
+                          : 'bg-[#181D22]/40 border-[#252B30]'
                       }`}
                     >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      {/* Set number */}
+                      <div className="col-span-2 flex items-center gap-1.5">
+                        <span className="w-6 h-6 rounded-lg bg-[#0B0D0F] font-black text-xs text-white flex items-center justify-center">
+                          {s.setNumber}
+                        </span>
+                      </div>
+
+                      {/* Weight modifier */}
+                      <div className="col-span-4 flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateSetValue(sIdx, 'actualWeightKg', -2.5)}
+                          className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
+                        >
+                          -
+                        </button>
+                        <span className="font-mono text-sm font-black text-white w-12 text-center">
+                          {s.actualWeightKg}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateSetValue(sIdx, 'actualWeightKg', 2.5)}
+                          className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Reps modifier */}
+                      <div className="col-span-4 flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateSetValue(sIdx, 'actualReps', -1)}
+                          className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
+                        >
+                          -
+                        </button>
+                        <span className="font-mono text-sm font-black text-white w-8 text-center">
+                          {s.actualReps}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateSetValue(sIdx, 'actualReps', 1)}
+                          className="w-7 h-7 rounded-lg bg-[#12161A] border border-[#252B30] text-[#9AA3A0] hover:text-white flex items-center justify-center font-bold text-xs"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Complete Button */}
+                      <div className="col-span-2 flex justify-end">
+                        <button
+                          id={`btn-set-complete-${sIdx}`}
+                          type="button"
+                          onClick={() => handleToggleSet(sIdx)}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                            s.completed
+                              ? 'bg-[#45D483] text-[#0B0D0F] shadow-[0_0_10px_rgba(69,212,131,0.5)]'
+                              : 'bg-[#0B0D0F] border border-[#252B30] text-[#9AA3A0] hover:border-[#B8F34A]'
+                          }`}
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 

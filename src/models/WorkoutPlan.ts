@@ -16,6 +16,19 @@ const planExerciseSchema = new Schema(
     instructions: { type: [String], default: [] },
     tips: { type: [String], default: [] },
     locked: { type: Boolean, default: false },
+    phase: {
+      type: String,
+      enum: ["warmup", "cardio", "bodyweight", "main", "cooldown"],
+      default: "main",
+    },
+    trackingType: {
+      type: String,
+      enum: ["reps", "timer"],
+      default: "reps",
+    },
+    targetDurationSeconds: { type: Number, default: 0 },
+    isStretchFallback: { type: Boolean, default: false },
+    stretchInstructions: { type: [String], default: [] },
   },
   { _id: false }
 );

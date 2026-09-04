@@ -58,7 +58,7 @@ export async function POST(
         sets: currentEx.sets,
       };
 
-      workoutSession.exercises[exIndex] = updatedExercise;
+      (workoutSession.exercises as any)[exIndex] = updatedExercise;
       workoutSession.swapHistory.push({
         originalExerciseId: String(currentEx.exercise),
         originalExerciseName: currentEx.exerciseName,
@@ -68,6 +68,7 @@ export async function POST(
         reason: reason || "Manual selection",
       });
 
+      workoutSession.markModified("exercises");
       await workoutSession.save();
       return ok({ success: true, session: workoutSession, swappedTo: replacementDto });
     }
@@ -103,9 +104,14 @@ export async function POST(
       restSeconds: currentEx.restSeconds,
       aiNote: swapResult.reasoning,
       sets: currentEx.sets,
+      phase: currentEx.phase || "main",
+      trackingType: currentEx.trackingType || "reps",
+      targetDurationSeconds: currentEx.targetDurationSeconds || 0,
+      isStretchFallback: false,
+      stretchInstructions: [],
     };
 
-    workoutSession.exercises[exIndex] = updatedExercise;
+    (workoutSession.exercises as any)[exIndex] = updatedExercise;
     workoutSession.swapHistory.push({
       originalExerciseId: String(currentEx.exercise),
       originalExerciseName: currentEx.exerciseName,
@@ -115,6 +121,7 @@ export async function POST(
       reason,
     });
 
+    workoutSession.markModified("exercises");
     await workoutSession.save();
     return ok({ success: true, session: workoutSession, swappedTo: swapResult.exerciseDto });
   } catch (error) {

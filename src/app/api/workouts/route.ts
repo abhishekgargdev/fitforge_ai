@@ -94,9 +94,12 @@ export async function POST(request: Request) {
       workoutName: day.workout.name,
       status: "in_progress",
       startedAt: new Date(),
-      exercises: day.workout.exercises.map((ex: { exercise: { toString(): string }; exerciseName: string; targetMuscle: string; equipment?: string; imageUrl?: string; difficulty?: string; instructions?: string[]; tips?: string[]; restSeconds: number; aiNote?: string; sets: number; reps: string; targetWeightKg?: number }) => {
+      exercises: day.workout.exercises.map((ex: any) => {
         const reps = parseInt(String(ex.reps).split("-")[0], 10) || 8;
         const weight = lastWeights.get(String(ex.exercise)) || ex.targetWeightKg || 40;
+        const trackingType = ex.trackingType || "reps";
+        const durationSec = ex.targetDurationSeconds || (trackingType === "timer" ? 300 : 0);
+
         return {
           exercise: ex.exercise,
           exerciseName: ex.exerciseName,
@@ -108,12 +111,19 @@ export async function POST(request: Request) {
           tips: ex.tips,
           restSeconds: ex.restSeconds,
           aiNote: ex.aiNote,
+          phase: ex.phase || "main",
+          trackingType,
+          targetDurationSeconds: durationSec,
+          isStretchFallback: Boolean(ex.isStretchFallback),
+          stretchInstructions: ex.stretchInstructions || [],
           sets: Array.from({ length: ex.sets }, (_, idx) => ({
             setNumber: idx + 1,
-            targetWeightKg: weight,
-            targetReps: reps,
-            actualWeightKg: weight,
-            actualReps: reps,
+            targetWeightKg: trackingType === "timer" ? 0 : weight,
+            targetReps: trackingType === "timer" ? 1 : reps,
+            actualWeightKg: trackingType === "timer" ? 0 : weight,
+            actualReps: trackingType === "timer" ? 1 : reps,
+            targetDurationSeconds: durationSec,
+            actualDurationSeconds: durationSec,
             rpe: 8,
             completed: false,
           })),

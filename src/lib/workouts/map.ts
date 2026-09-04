@@ -5,157 +5,111 @@ import type {
   WorkoutExerciseItem,
 } from "@/types";
 
-export function toSplitDto(plan: {
-  _id: { toString(): string };
-  title: string;
-  daysPerWeek: number;
-  planMode?: "ai" | "manual";
-  nextPlanGenerationDate?: Date;
-  days: Array<{
-    dayName: string;
-    focus?: string;
-    isRestDay?: boolean;
-    skipped?: boolean;
-    skipReason?: string;
-    workout?: {
-      name: string;
-      durationMinutes: number;
-      muscleGroups?: string[];
-      category?: WorkoutTemplate["category"];
-      exercises?: Array<{
-        exercise: { toString(): string };
-        exerciseName: string;
-        targetMuscle: string;
-        sets: number;
-        reps: string;
-        restSeconds: number;
-        aiNote?: string;
-        equipment?: string;
-        targetWeightKg?: number;
-        imageUrl?: string;
-        difficulty?: WorkoutExerciseItem["difficulty"];
-        instructions?: string[];
-        tips?: string[];
-      }>;
+export function toSplitDto(plan: any): WorkoutSplitSchedule {
+  if (!plan) {
+    return {
+      id: "",
+      title: "No Plan",
+      daysPerWeek: 0,
+      planMode: "ai",
+      days: [],
     };
-  }>;
-}): WorkoutSplitSchedule {
+  }
+
+  const rawDays: any[] = Array.isArray(plan.days) ? plan.days : [];
   return {
-    id: String(plan._id),
-    title: plan.title,
-    daysPerWeek: plan.daysPerWeek,
+    id: String(plan._id || plan.id || ""),
+    title: plan.title || "Workout Plan",
+    daysPerWeek: plan.daysPerWeek || 0,
     planMode: plan.planMode || "ai",
-    nextPlanGenerationDate: plan.nextPlanGenerationDate ? plan.nextPlanGenerationDate.toISOString() : undefined,
-    days: plan.days.map((day) => ({
-      dayName: day.dayName,
-      day: day.dayName,
+    nextPlanGenerationDate: plan.nextPlanGenerationDate
+      ? new Date(plan.nextPlanGenerationDate).toISOString()
+      : undefined,
+    days: rawDays.map((day: any) => ({
+      dayName: day.dayName || "Day",
+      day: day.dayName || "Day",
       focus: day.focus || "",
       isRestDay: Boolean(day.isRestDay),
       skipped: Boolean(day.skipped),
       skipReason: day.skipReason || "",
-      locked: Boolean((day as { locked?: boolean }).locked),
+      locked: Boolean(day.locked),
       workout: day.isRestDay || !day.workout
         ? undefined
         : {
-            id: `${String(plan._id)}-${day.dayName}`,
-            name: day.workout.name,
-            durationMinutes: day.workout.durationMinutes,
+            id: `${String(plan._id || plan.id)}-${day.dayName}`,
+            name: day.workout.name || "Workout",
+            durationMinutes: day.workout.durationMinutes || 45,
             muscleGroups: (day.workout.muscleGroups || []) as WorkoutTemplate["muscleGroups"],
             category: day.workout.category || "Full Body",
-            exercises: (day.workout.exercises || []).map((ex) => ({
-              exerciseId: String(ex.exercise),
-              exerciseName: ex.exerciseName,
+            exercises: (day.workout.exercises || []).map((ex: any) => ({
+              exerciseId: String(ex.exercise?._id || ex.exercise || ""),
+              exerciseName: ex.exerciseName || "Exercise",
               targetMuscle: ex.targetMuscle as WorkoutExerciseItem["targetMuscle"],
-              sets: ex.sets,
-              reps: ex.reps,
-              restSeconds: ex.restSeconds,
-              aiNote: ex.aiNote,
+              sets: ex.sets || 3,
+              reps: String(ex.reps || "10"),
+              restSeconds: ex.restSeconds || 60,
+              aiNote: ex.aiNote || "",
               equipment: ex.equipment || "",
-              targetWeightKg: ex.targetWeightKg,
-              imageUrl: ex.imageUrl,
-              difficulty: ex.difficulty,
-              instructions: ex.instructions,
-              tips: ex.tips,
-              locked: Boolean((ex as { locked?: boolean }).locked),
+              targetWeightKg: ex.targetWeightKg || 0,
+              imageUrl: ex.imageUrl || "",
+              difficulty: ex.difficulty || "Intermediate",
+              instructions: ex.instructions || [],
+              tips: ex.tips || [],
+              locked: Boolean(ex.locked),
+              phase: ex.phase || "main",
+              trackingType: ex.trackingType || "reps",
+              targetDurationSeconds: ex.targetDurationSeconds || 0,
+              isStretchFallback: Boolean(ex.isStretchFallback),
+              stretchInstructions: ex.stretchInstructions || [],
             })),
           },
     })),
   };
 }
 
-export function sessionToTemplate(session: {
-  _id: { toString(): string };
-  workoutName: string;
-  exercises: Array<{
-    exercise: { toString(): string };
-    exerciseName: string;
-    targetMuscle: string;
-    equipment?: string;
-    imageUrl?: string;
-    difficulty?: string;
-    instructions?: string[];
-    tips?: string[];
-    restSeconds: number;
-    aiNote?: string;
-    sets: Array<{
-      setNumber: number;
-      targetWeightKg: number;
-      targetReps: number;
-      actualWeightKg: number;
-      actualReps: number;
-      rpe?: number;
-      completed: boolean;
-    }>;
-  }>;
-}): WorkoutTemplate {
+export function sessionToTemplate(session: any): WorkoutTemplate {
+  const rawExercises: any[] = Array.isArray(session.exercises) ? session.exercises : [];
   return {
-    id: String(session._id),
-    name: session.workoutName,
-    durationMinutes: 60,
+    id: String(session._id || session.id || ""),
+    name: session.workoutName || "Workout Session",
+    durationMinutes: session.durationMinutes || 60,
     muscleGroups: [],
     category: "Full Body",
-    exercises: session.exercises.map((ex) => ({
-      exerciseId: String(ex.exercise),
-      exerciseName: ex.exerciseName,
+    exercises: rawExercises.map((ex: any) => ({
+      exerciseId: String(ex.exercise?._id || ex.exercise || ""),
+      exerciseName: ex.exerciseName || "Exercise",
       targetMuscle: ex.targetMuscle as WorkoutExerciseItem["targetMuscle"],
-      sets: ex.sets.length,
-      reps: String(ex.sets[0]?.targetReps ?? 8),
-      restSeconds: ex.restSeconds,
-      aiNote: ex.aiNote,
+      sets: Array.isArray(ex.sets) ? ex.sets.length : 3,
+      reps: String(ex.sets?.[0]?.targetReps ?? 8),
+      restSeconds: ex.restSeconds || 60,
+      aiNote: ex.aiNote || "",
       equipment: ex.equipment || "",
-      targetWeightKg: ex.sets[0]?.targetWeightKg,
-      imageUrl: ex.imageUrl,
+      targetWeightKg: ex.sets?.[0]?.targetWeightKg || 0,
+      imageUrl: ex.imageUrl || "",
       difficulty: (ex.difficulty as WorkoutExerciseItem["difficulty"]) || "Intermediate",
-      instructions: ex.instructions,
-      tips: ex.tips,
+      instructions: ex.instructions || [],
+      tips: ex.tips || [],
+      phase: ex.phase || "main",
+      trackingType: ex.trackingType || "reps",
+      targetDurationSeconds: ex.targetDurationSeconds || 0,
+      isStretchFallback: Boolean(ex.isStretchFallback),
+      stretchInstructions: ex.stretchInstructions || [],
     })),
   };
 }
 
-export function sessionToSummary(session: {
-  _id: { toString(): string };
-  workoutName: string;
-  completedAt?: Date;
-  createdAt?: Date;
-  durationMinutes: number;
-  totalVolumeKg: number;
-  totalSets: number;
-  totalExercises: number;
-  caloriesBurnedEstimate: number;
-  personalRecords?: string[];
-  volumeChangeVsPreviousPercentage?: number;
-  aiSummary?: string;
-}): CompletedWorkoutSummary {
+export function sessionToSummary(session: any): CompletedWorkoutSummary {
   const when = session.completedAt || session.createdAt;
+  const dateStr = when ? new Date(when).toISOString() : new Date().toISOString();
   return {
-    id: String(session._id),
-    workoutName: session.workoutName,
-    date: when ? when.toISOString() : new Date().toISOString(),
-    durationMinutes: session.durationMinutes,
-    totalVolumeKg: session.totalVolumeKg,
-    totalSets: session.totalSets,
-    totalExercises: session.totalExercises,
-    caloriesBurnedEstimate: session.caloriesBurnedEstimate,
+    id: String(session._id || session.id || ""),
+    workoutName: session.workoutName || "Workout",
+    date: dateStr,
+    durationMinutes: session.durationMinutes || 0,
+    totalVolumeKg: session.totalVolumeKg || 0,
+    totalSets: session.totalSets || 0,
+    totalExercises: session.totalExercises || 0,
+    caloriesBurnedEstimate: session.caloriesBurnedEstimate || 0,
     personalRecords: session.personalRecords ?? [],
     volumeChangeVsPreviousPercentage: session.volumeChangeVsPreviousPercentage ?? 0,
     aiSummary: session.aiSummary || "Solid session. Keep progressive overload consistent next time.",

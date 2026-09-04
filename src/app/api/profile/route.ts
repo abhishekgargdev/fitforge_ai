@@ -87,11 +87,12 @@ export async function PUT(request: Request) {
           mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
         };
         const selectedDayNames = body.trainingDays.map((d: string) => DAY_MAP[d.toLowerCase()] || d);
-        activePlan.days = activePlan.days.map((day: any) => {
+        (activePlan.days as any) = activePlan.days.map((day: any) => {
           const isSelected = selectedDayNames.includes(day.dayName);
           if (!isSelected) {
+            const base = typeof day.toObject === "function" ? day.toObject() : day;
             return {
-              ...day,
+              ...base,
               isRestDay: true,
               workout: undefined,
             };

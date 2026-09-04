@@ -52,11 +52,11 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
   };
 
   const stepsList = [
-    'Analyzing your bio-profile & biomechanics...',
-    'Checking your recent volume & training history...',
-    'Selecting optimal compound & isolation exercises...',
-    'Building progressive overload curve & rest intervals...',
-    'Creating your personalized FitForge AI plan...',
+    'Analyzing user profile, goals & daily muscle splits...',
+    'Filtering DB catalog for warm-up stretches & mobility...',
+    'Scheduling cardio intervals (Running, Cycling, Stepmill, Elliptical)...',
+    'Matching bodyweight & machine exercises to daily target muscles...',
+    'Structuring 5-phase workout split with timer & reps tracking...',
   ];
 
   const equipmentOptions: { id: EquipmentType; label: string }[] = [

@@ -85,9 +85,14 @@ export async function POST(
         instructions: replacementDoc.instructions,
         tips: replacementDoc.tips,
         locked: false,
+        phase: currentEx.phase || "main",
+        trackingType: currentEx.trackingType || "reps",
+        targetDurationSeconds: currentEx.targetDurationSeconds || 0,
+        isStretchFallback: false,
+        stretchInstructions: [],
       };
 
-      day.workout.exercises[exIndex] = updatedExercise;
+      (day.workout.exercises as any)[exIndex] = updatedExercise;
       day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
       plan.swapHistory.push({
         originalExerciseId: String(currentEx.exercise),
@@ -98,6 +103,7 @@ export async function POST(
         reason: reason || "Manual selection",
       });
 
+      plan.markModified("days");
       await plan.save();
       return ok({ success: true, plan, swappedTo: replacementDto });
     }
@@ -137,9 +143,14 @@ export async function POST(
       instructions: replacementDoc.instructions,
       tips: replacementDoc.tips,
       locked: false,
+      phase: currentEx.phase || "main",
+      trackingType: currentEx.trackingType || "reps",
+      targetDurationSeconds: currentEx.targetDurationSeconds || 0,
+      isStretchFallback: false,
+      stretchInstructions: [],
     };
 
-    day.workout.exercises[exIndex] = updatedExercise;
+    (day.workout.exercises as any)[exIndex] = updatedExercise;
     day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
     plan.swapHistory.push({
       originalExerciseId: String(currentEx.exercise),
@@ -150,6 +161,7 @@ export async function POST(
       reason,
     });
 
+    plan.markModified("days");
     await plan.save();
     return ok({ success: true, plan, swappedTo: swapResult.exerciseDto });
   } catch (error) {

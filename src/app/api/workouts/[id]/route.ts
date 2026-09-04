@@ -52,7 +52,7 @@ export async function PUT(
     });
     if (!workout) return fail("Active workout not found.", 404, "WORKOUT_NOT_FOUND");
 
-    workout.exercises = workout.exercises.map((ex: any) => {
+    (workout.exercises as any) = workout.exercises.map((ex: any) => {
       const incoming = parsed.data.exercises.find(
         (item) => item.exerciseId === String(ex.exercise)
       );
@@ -67,6 +67,7 @@ export async function PUT(
         sets: incoming.sets,
       };
     });
+    workout.markModified("exercises");
     await workout.save();
     return ok({
       session: {

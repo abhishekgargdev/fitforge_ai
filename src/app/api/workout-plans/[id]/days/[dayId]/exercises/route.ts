@@ -44,7 +44,7 @@ export async function POST(
         durationMinutes: 45,
         muscleGroups: [],
         category: "Full Body",
-        exercises: [],
+        exercises: [] as any,
       };
     }
 
@@ -70,10 +70,18 @@ export async function POST(
       instructions: exerciseDoc.instructions,
       tips: exerciseDoc.tips,
       locked: false,
+      phase: "main",
+      trackingType: "reps",
+      targetDurationSeconds: 0,
+      isStretchFallback: false,
+      stretchInstructions: [],
     };
 
-    day.workout.exercises.push(newExercise);
-    day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
+    if (day.workout) {
+      (day.workout.exercises as any).push(newExercise);
+      day.workout.durationMinutes = calculateWorkoutDurationMinutes(day.workout.exercises);
+    }
+    plan.markModified("days");
     await plan.save();
 
     return ok({ success: true, plan }, 201);
@@ -108,7 +116,7 @@ export async function PUT(
     if (!day || !day.workout) return fail("Workout day not found.", 404, "DAY_NOT_FOUND");
 
     const existingMap = new Map<string, any>();
-    day.workout.exercises.forEach((ex: any) => {
+    (day.workout.exercises || []).forEach((ex: any) => {
       existingMap.set(String(ex.exercise), ex);
       existingMap.set(ex.exerciseName.toLowerCase(), ex);
     });
@@ -125,13 +133,14 @@ export async function PUT(
     }
 
     // Append any exercises not included in exerciseOrder to avoid accidental deletion
-    day.workout.exercises.forEach((ex: any) => {
+    (day.workout.exercises || []).forEach((ex: any) => {
       if (!used.has(String(ex.exercise))) {
         reordered.push(ex);
       }
     });
 
-    day.workout.exercises = reordered;
+    (day.workout.exercises as any) = reordered;
+    plan.markModified("days");
     await plan.save();
 
     return ok({ success: true, plan });

@@ -197,6 +197,9 @@ export interface BodyCompositionDetails {
   };
 }
 
+export type WorkoutPhase = "warmup" | "cardio" | "bodyweight" | "main" | "cooldown";
+export type TrackingType = "reps" | "timer";
+
 export interface Exercise {
   id: string;
   exerciseId?: string;
@@ -225,6 +228,11 @@ export interface Exercise {
   source?: "catalog" | "user";
   createdBy?: string;
   cloudinaryPublicId?: string;
+  phase?: WorkoutPhase;
+  trackingType?: TrackingType;
+  targetDurationSeconds?: number;
+  isStretchFallback?: boolean;
+  stretchInstructions?: string[];
 }
 
 export interface ActiveWorkoutSet {
@@ -233,6 +241,8 @@ export interface ActiveWorkoutSet {
   targetReps: number;
   actualWeightKg: number;
   actualReps: number;
+  targetDurationSeconds?: number;
+  actualDurationSeconds?: number;
   rpe?: number;
   completed: boolean;
 }
@@ -244,6 +254,11 @@ export interface ActiveWorkoutExercise {
   aiNote?: string;
   skipped?: boolean;
   skippedReason?: string;
+  phase?: WorkoutPhase;
+  trackingType?: TrackingType;
+  targetDurationSeconds?: number;
+  isStretchFallback?: boolean;
+  stretchInstructions?: string[];
 }
 
 export interface WorkoutExerciseItem {
@@ -261,6 +276,11 @@ export interface WorkoutExerciseItem {
   instructions?: string[];
   tips?: string[];
   locked?: boolean;
+  phase?: WorkoutPhase;
+  trackingType?: TrackingType;
+  targetDurationSeconds?: number;
+  isStretchFallback?: boolean;
+  stretchInstructions?: string[];
 }
 
 export interface WorkoutTemplate {

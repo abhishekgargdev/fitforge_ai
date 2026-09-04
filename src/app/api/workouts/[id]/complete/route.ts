@@ -33,14 +33,15 @@ export async function POST(
     }
 
     if (parsed.success && parsed.data.exercises) {
-      workout.exercises = workout.exercises.map((ex: SessionExerciseLike) => {
-      const incoming = parsed.data.exercises?.find(
-        (item) => item.exerciseId === String(ex.exercise)
-      );
-      if (!incoming) return ex;
-      const base = ex.toObject ? ex.toObject() : ex;
-      return { ...base, sets: incoming.sets };
-    });
+      (workout.exercises as any) = workout.exercises.map((ex: any) => {
+        const incoming = parsed.data.exercises?.find(
+          (item) => item.exerciseId === String(ex.exercise)
+        );
+        if (!incoming) return ex;
+        const base = ex.toObject ? ex.toObject() : ex;
+        return { ...base, sets: incoming.sets };
+      });
+      workout.markModified("exercises");
     }
 
     const completedSets = workout.exercises.flatMap((ex: SessionExerciseLike) =>

@@ -9,6 +9,8 @@ export async function POST(request: Request) {
     const session = await requireSessionUser();
     if (!session) return fail("Unauthorized", 401, "UNAUTHORIZED");
     const json = await request.json();
+    console.log(`[POST /api/ai/workout-plan] Incoming request payload from user ${session.user._id}:`, json);
+
     const parsed = plannerInputSchema.safeParse({
       ...json,
       daysPerWeek: json.daysPerWeek ?? json.daysPerWeek,
@@ -16,9 +18,14 @@ export async function POST(request: Request) {
       equipment: json.equipment ?? json.availableEquipment,
     });
     if (!parsed.success) {
+      console.warn(`[POST /api/ai/workout-plan] Validation failed:`, parsed.error.issues);
       return fail(parsed.error.issues[0]?.message ?? "Invalid input", 400, "VALIDATION_ERROR");
     }
+
+    console.log(`[POST /api/ai/workout-plan] Triggering generateAndSaveWorkoutPlan...`);
     const plan = await generateAndSaveWorkoutPlan(session.user._id, parsed.data);
+    console.log(`[POST /api/ai/workout-plan] Plan generated successfully: ${plan.title}`);
+
     return ok({
       plan: toSplitDto(plan),
       planTitle: plan.title,
@@ -26,7 +33,7 @@ export async function POST(request: Request) {
       weeklySchedule: toSplitDto(plan).days,
     });
   } catch (error) {
-    console.error("[ai:workout-plan]", error);
+    console.error("[POST /api/ai/workout-plan] Error generating workout plan:", error);
     return fail("Unable to generate a workout plan right now.", 500, "AI_WORKOUT_PLAN_FAILED");
   }
 }

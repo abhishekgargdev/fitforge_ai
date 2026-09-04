@@ -7,6 +7,8 @@ const sessionSetSchema = new Schema(
     targetReps: { type: Number, required: true },
     actualWeightKg: { type: Number, required: true },
     actualReps: { type: Number, required: true },
+    targetDurationSeconds: { type: Number, default: 0 },
+    actualDurationSeconds: { type: Number, default: 0 },
     rpe: { type: Number, default: 8 },
     completed: { type: Boolean, default: false },
   },
@@ -27,6 +29,19 @@ const sessionExerciseSchema = new Schema(
     aiNote: { type: String, default: "" },
     skipped: { type: Boolean, default: false },
     skippedReason: { type: String, default: "" },
+    phase: {
+      type: String,
+      enum: ["warmup", "cardio", "bodyweight", "main", "cooldown"],
+      default: "main",
+    },
+    trackingType: {
+      type: String,
+      enum: ["reps", "timer"],
+      default: "reps",
+    },
+    targetDurationSeconds: { type: Number, default: 0 },
+    isStretchFallback: { type: Boolean, default: false },
+    stretchInstructions: { type: [String], default: [] },
     sets: { type: [sessionSetSchema], default: [] },
   },
   { _id: false }

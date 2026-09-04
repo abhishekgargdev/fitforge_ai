@@ -31,9 +31,18 @@ import { FitnessGoalModel } from "@/models/FitnessGoal";
 import { WorkoutSessionModel } from "@/models/WorkoutSession";
 
 export async function generateAndSaveWorkoutPlan(
-  userId: unknown,
+  userId: any,
   input: PlannerInput
 ) {
+  console.log(`[generateAndSaveWorkoutPlan] Starting generation for user ${userId}. Inputs:`, {
+    goal: input.goal,
+    daysPerWeek: input.daysPerWeek,
+    trainingDays: input.trainingDays,
+    duration: input.duration,
+    experience: input.experience,
+    focusMuscles: input.focusMuscles,
+  });
+
   const [activePlan, goalDoc, completedSessions, recentSessions] = await Promise.all([
     WorkoutPlanModel.findOne({ userId, isActive: true }),
     FitnessGoalModel.findOne({ userId }),
@@ -60,15 +69,17 @@ export async function generateAndSaveWorkoutPlan(
     ? effectiveDays.map((d: string) => DAY_MAP[d.toLowerCase()] || d)
     : undefined;
 
+  console.log(`[generateAndSaveWorkoutPlan] Effective training days:`, effectiveDays, "Allowed day names:", allowedDayNames);
+
   // Format locked constraints for prompt
   let lockedConstraints = "";
   if (activePlan?.days) {
     const lockedItems: string[] = [];
-    activePlan.days.forEach((day: { dayName: string; locked?: boolean; workout?: { name: string; exercises?: Array<{ exerciseName: string; locked?: boolean }> } }) => {
+    activePlan.days.forEach((day: any) => {
       if (day.locked) {
         lockedItems.push(`Day ${day.dayName}: FULL DAY LOCKED (${day.workout?.name || "Workout"})`);
       } else if (day.workout?.exercises) {
-        const lockedExs = day.workout.exercises.filter((ex) => ex.locked).map((ex) => ex.exerciseName);
+        const lockedExs = day.workout.exercises.filter((ex: any) => ex.locked).map((ex: any) => ex.exerciseName);
         if (lockedExs.length > 0) {
           lockedItems.push(`Day ${day.dayName}: Keep exact exercises: ${lockedExs.join(", ")}`);
         }
@@ -76,10 +87,13 @@ export async function generateAndSaveWorkoutPlan(
     });
     if (lockedItems.length > 0) {
       lockedConstraints = lockedItems.join("\n");
+      console.log(`[generateAndSaveWorkoutPlan] Preserving locked constraints:\n${lockedConstraints}`);
     }
   }
 
   const catalog = await catalogNamesForPlanner(input.focusMuscles);
+  console.log(`[generateAndSaveWorkoutPlan] Passing catalog of ${catalog.length} exercise names to AI orchestrator.`);
+
   let aiPlan;
   try {
     aiPlan = await generateStructuredJson({
@@ -107,22 +121,28 @@ export async function generateAndSaveWorkoutPlan(
       }),
       schema: aiWorkoutPlanSchema,
     });
+    console.log(`[generateAndSaveWorkoutPlan] AI successfully generated plan titled "${aiPlan.planTitle}" with ${aiPlan.days.length} days.`);
     await recordAiUsage({ userId, feature: "workout-plan", ok: true });
   } catch (error) {
+    console.error(`[generateAndSaveWorkoutPlan] AI Orchestrator failed:`, error);
     await recordAiUsage({ userId, feature: "workout-plan", ok: false });
     throw error;
   }
 
   const resolved = await resolvePlanDays(aiPlan, allowedDayNames);
+  console.log(`[generateAndSaveWorkoutPlan] Plan day resolution finished. Resolved training days: ${resolved.trainingDays}`);
+
   if (resolved.trainingDays === 0) {
+    console.error(`[generateAndSaveWorkoutPlan] ERROR: AI plan days count resolved to 0! Raw AI days were:`, JSON.stringify(aiPlan.days, null, 2));
     throw new Error("AI plan did not resolve to any catalog exercises");
   }
 
   // Preserve locked days and locked exercises from active plan
   if (activePlan?.days) {
-    resolved.days = resolved.days.map((newDay) => {
-      const oldDay = activePlan.days.find((d: { dayName: string }) => d.dayName === newDay.dayName);
-      if (!oldDay) return newDay;
+    resolved.days = resolved.days.map((newDay: any) => {
+      const oldDayDoc = activePlan.days.find((d: { dayName: string }) => d.dayName === newDay.dayName);
+      if (!oldDayDoc) return newDay;
+      const oldDay: any = typeof (oldDayDoc as any).toObject === "function" ? (oldDayDoc as any).toObject() : oldDayDoc;
       if (oldDay.locked) {
         return oldDay; // Keep entire locked day
       }
@@ -155,7 +175,11 @@ export async function generateAndSaveWorkoutPlan(
     nextPlanGenerationDate,
     origin: "AI_RECOMMENDATION",
     days: resolved.days,
-    plannerInputs: input,
+    plannerInputs: {
+      ...input,
+      goal: Array.isArray(input.goal) ? input.goal.join(", ") : input.goal,
+    },
   });
+  console.log(`[generateAndSaveWorkoutPlan] Successfully saved new workout plan ID: ${plan._id}`);
   return plan;
 }

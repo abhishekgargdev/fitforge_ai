@@ -477,6 +477,23 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-white block truncate">{ex.exerciseName}</span>
+                          {ex.phase && (
+                            <span
+                              className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider ${
+                                ex.phase === 'warmup'
+                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                  : ex.phase === 'cardio'
+                                  ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                  : ex.phase === 'bodyweight'
+                                  ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                                  : ex.phase === 'cooldown'
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-[#B8F34A]/15 text-[#B8F34A] border border-[#B8F34A]/30'
+                              }`}
+                            >
+                              {ex.phase}
+                            </span>
+                          )}
                           {isExLocked && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#F5B942]/15 text-[#F5B942] font-semibold">
                               Locked
@@ -484,8 +501,16 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                           )}
                         </div>
                         <span className="text-[11px] text-[#9AA3A0] block mt-0.5">
-                          {ex.sets} Sets × {ex.reps} Reps • {ex.restSeconds}s rest • <span className="capitalize">{ex.equipment || 'body weight'}</span>
+                          {ex.trackingType === 'timer'
+                            ? `${Math.round((ex.targetDurationSeconds || 300) / 60)} min timer`
+                            : `${ex.sets} Sets × ${ex.reps} Reps`}{' '}
+                          • {ex.restSeconds}s rest • <span className="capitalize">{ex.equipment || 'body weight'}</span>
                         </span>
+                        {ex.isStretchFallback && (
+                          <span className="text-[10px] text-amber-400 font-medium block mt-0.5">
+                            ✨ AI Guided Stretch Instruction
+                          </span>
+                        )}
                         {ex.aiNote && (
                           <span className="text-[10px] text-[#B8F34A] block mt-0.5 truncate">
                             💡 {ex.aiNote}
