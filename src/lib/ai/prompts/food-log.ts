@@ -45,6 +45,10 @@ Rules:
 3. Be specific with food names (e.g., "Grilled Salmon Fillet", "Steamed White Rice", "Mixed Green Salad with Olive Oil").`;
 }
 
-export function foodImageVisionUserPrompt(mealCategory?: string) {
-  return `Identify the food items present in this photo and estimate their serving size and nutritional content for ${mealCategory || "a meal"}.`;
+export function foodImageVisionUserPrompt(mealCategory?: string, userContext?: string) {
+  const contextNote = userContext?.trim()
+    ? `Additional user context: "${userContext.trim()}". Use this as a clue, but prioritize what is visible in the photo.`
+    : "No extra user notes were provided; rely on the image alone.";
+
+  return `Identify the food items present in this photo and estimate their serving size and nutritional content for ${mealCategory || "a meal"}. ${contextNote}`;
 }

@@ -34,8 +34,13 @@ function geminiKeys() {
 
 function extractJson(text: string) {
   const trimmed = text.trim();
+  if (!trimmed) return "";
+
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  return fenced ? fenced[1].trim() : trimmed;
+  const candidate = fenced ? fenced[1].trim() : trimmed;
+
+  const jsonMatch = candidate.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  return jsonMatch ? jsonMatch[0].trim() : candidate.trim();
 }
 
 async function geminiJson(system: string, user: string) {

@@ -62,6 +62,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
 
   // Photo Vision state
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [imageNotes, setImageNotes] = useState('');
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
   const [visionEstimate, setVisionEstimate] = useState<Array<{
     foodName: string;
@@ -82,6 +83,49 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
   const [customFiber, setCustomFiber] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const captureInputRef = useRef<HTMLInputElement | null>(null);
+
+  const compressImageFile = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 1200;
+        const scale = Math.min(1, maxWidth / Math.max(img.width, 1));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+          reject(new Error('Unable to process image.'));
+          return;
+        }
+
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => reject(new Error('Unable to read image.'));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error('Unable to read image.'));
+    reader.readAsDataURL(file);
+  });
+
+  const handleImageFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please choose a valid image file.');
+      return;
+    }
+
+    try {
+      setErrorMsg('');
+      const compressed = await compressImageFile(file);
+      setPhotoBase64(compressed);
+      setVisionEstimate(null);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Unable to prepare image.');
+    }
+  };
 
   const triggerPhotoInput = (mode: 'upload' | 'capture') => {
     const input = mode === 'upload' ? uploadInputRef.current : captureInputRef.current;
@@ -426,11 +470,20 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                               body: JSON.stringify({
                                 imageBase64: photoBase64,
                                 mealCategory: selectedMeal,
+                                userContext: imageNotes.trim(),
                               }),
                             });
-                            const json = await res.json();
+
+                            const text = await res.text();
+                            let json: any = {};
+                            try {
+                              json = text ? JSON.parse(text) : {};
+                            } catch {
+                              throw new Error(text || 'Failed to analyze photo.');
+                            }
+
                             if (!res.ok) throw new Error(json.error?.message || 'Failed to analyze photo.');
-                            setVisionEstimate(json.data.estimate.identifiedFoods || []);
+                            setVisionEstimate(json.data?.estimate?.identifiedFoods || []);
                           } catch (err) {
                             setErrorMsg(err instanceof Error ? err.message : 'Unable to analyze image.');
                           } finally {
@@ -452,6 +505,18 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                     <div>
                       <span className="text-xs font-bold text-white block">Upload or Capture Food Photo</span>
                       <span className="text-[11px] text-[#9AA3A0]">PNG, JPG, or WEBP up to 5MB</span>
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-[#9AA3A0]">
+                        Extra context for the AI
+                      </label>
+                      <textarea
+                        value={imageNotes}
+                        onChange={(e) => setImageNotes(e.target.value)}
+                        rows={3}
+                        placeholder="Example: grilled chicken wrap, side salad, no dressing"
+                        className="w-full rounded-2xl border border-[#252B30] bg-[#0B0D0F] px-3 py-2 text-xs text-[#F5F7F2] placeholder:text-[#6D7777] focus:border-[#B8F34A]/70 focus:outline-none"
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <button
@@ -478,11 +543,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setPhotoBase64(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
+                        void handleImageFile(file);
                       }}
                     />
 
@@ -495,11 +556,7 @@ export const FoodLoggerModal: React.FC<FoodLoggerModalProps> = ({
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setPhotoBase64(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
+                        void handleImageFile(file);
                       }}
                     />
                   </div>

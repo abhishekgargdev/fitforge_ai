@@ -12,17 +12,22 @@ export async function POST(request: Request) {
     session = await requireSessionUser();
     if (!session) return fail("Unauthorized", 401, "UNAUTHORIZED");
 
-    const json = await request.json();
-    const { imageBase64, mealCategory } = json;
+    const body = await request.json().catch(() => ({} as Record<string, unknown>));
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
+    const mealCategory = typeof body.mealCategory === "string" ? body.mealCategory : undefined;
+    const userContext = typeof body.userContext === "string" ? body.userContext.trim() : undefined;
 
-    if (!imageBase64 || typeof imageBase64 !== "string") {
+    if (!imageBase64) {
       return fail("Image data (base64) is required.", 400, "VALIDATION_ERROR");
     }
 
-    // Call orchestrator with NVIDIA vision model (meta/llama-3.2-11b-vision-instruct)
+    if (imageBase64.length > 12_000_000) {
+      return fail("Image is too large. Please capture a smaller image or upload a lighter file.", 400, "VALIDATION_ERROR");
+    }
+
     const estimate = await generateStructuredVisionJson({
       system: foodImageVisionSystemPrompt(),
-      user: foodImageVisionUserPrompt(mealCategory),
+      user: foodImageVisionUserPrompt(mealCategory, userContext),
       imageBase64,
       schema: foodImageEstimateSchema,
     });
