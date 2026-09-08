@@ -121,6 +121,17 @@ export async function POST(
     }
     await workout.save();
 
+    if (workout.workoutPlanId) {
+      const { WorkoutPlanModel } = await import("@/models/WorkoutPlan");
+      const plan = await WorkoutPlanModel.findOne({ _id: workout.workoutPlanId, userId: session.user._id });
+      if (plan && plan.days && plan.days[workout.dayIndex]) {
+        plan.days[workout.dayIndex].completed = true;
+        plan.days[workout.dayIndex].completedAt = new Date();
+        plan.markModified("days");
+        await plan.save();
+      }
+    }
+
     if (parsed.success && parsed.data.endWeightKg) {
       await BodyMeasurement.create({
         userId: session.user._id,

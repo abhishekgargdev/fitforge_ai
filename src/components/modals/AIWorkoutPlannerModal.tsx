@@ -30,7 +30,11 @@ export const AIWorkoutPlannerModal: React.FC<AIWorkoutPlannerModalProps> = ({
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType[]>(
     userProfile.availableEquipment || ['full_gym', 'barbell', 'dumbbells']
   );
-  const [focusMuscles, setFocusMuscles] = useState<string[]>(['Chest', 'Back', 'Shoulders', 'Legs']);
+  const [focusMuscles, setFocusMuscles] = useState<string[]>(
+    userProfile.focusMuscles && userProfile.focusMuscles.length > 0
+      ? userProfile.focusMuscles
+      : ['Chest', 'Back', 'Shoulders', 'Legs']
+  );
   const [strategy, setStrategy] = useState<'hypertrophy' | 'strength' | 'fat_loss' | 'conditioning' | 'recovery'>('hypertrophy');
   const [workoutStyle, setWorkoutStyle] = useState<'gym' | 'home' | 'hybrid'>('gym');
   const [homeWorkoutPrompt, setHomeWorkoutPrompt] = useState('');

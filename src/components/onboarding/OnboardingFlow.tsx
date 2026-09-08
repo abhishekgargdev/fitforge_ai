@@ -50,6 +50,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [name, setName] = useState(initialProfile.name || '');
+  React.useEffect(() => {
+    if (initialProfile.name && !name) {
+      setName(initialProfile.name);
+    }
+  }, [initialProfile.name]);
   const [gender, setGender] = useState<'male' | 'female' | 'other'>(initialProfile.gender || 'male');
   const [age, setAge] = useState<number>(initialProfile.age || 28);
   const [heightCm, setHeightCm] = useState<number>(initialProfile.heightCm || 180);

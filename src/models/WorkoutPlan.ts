@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType, type Model } from "mongoose";
+import { Schema, model, models, type InferSchemaType, type Model } from "mongoose";
 
 const planExerciseSchema = new Schema(
   {
@@ -61,6 +61,8 @@ const splitDaySchema = new Schema(
     locked: { type: Boolean, default: false },
     skipped: { type: Boolean, default: false },
     skipReason: { type: String, default: "" },
+    completed: { type: Boolean, default: false },
+    completedAt: { type: Date },
     scheduledDate: { type: Date },
     workout: { type: dayWorkoutSchema, default: undefined },
   },
@@ -113,8 +115,10 @@ const workoutPlanSchema = new Schema(
 
 export type WorkoutPlanDocument = InferSchemaType<typeof workoutPlanSchema>;
 
-export const WorkoutPlanModel: Model<WorkoutPlanDocument> = model<WorkoutPlanDocument>(
-  "WorkoutPlanV2",
-  workoutPlanSchema,
-  "workoutPlans"
-);
+export const WorkoutPlanModel: Model<WorkoutPlanDocument> =
+  (models.WorkoutPlanV2 as Model<WorkoutPlanDocument>) ??
+  model<WorkoutPlanDocument>(
+    "WorkoutPlanV2",
+    workoutPlanSchema,
+    "workoutPlans"
+  );

@@ -311,6 +311,8 @@ export interface WorkoutSplitDay {
   locked?: boolean;
   skipped?: boolean;
   skipReason?: string;
+  completed?: boolean;
+  completedAt?: string;
   workout?: WorkoutTemplate;
 }
 

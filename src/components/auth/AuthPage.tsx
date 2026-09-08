@@ -159,6 +159,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               onClick={() => {
                 setAuthMode('login');
                 setErrorMsg('');
+                setName('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
               }}
               className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
                 authMode === 'login'
@@ -174,6 +178,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               onClick={() => {
                 setAuthMode('register');
                 setErrorMsg('');
+                setName('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
               }}
               className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
                 authMode === 'register'

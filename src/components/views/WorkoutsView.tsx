@@ -23,6 +23,7 @@ import {
   Info,
   Footprints,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { DailyActivityModal } from '../modals/DailyActivityModal';
 import { SwapExerciseModal } from '../modals/SwapExerciseModal';
@@ -104,6 +105,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   }, [defaultSelectedIndex]);
 
   const todayWorkout = currentSplit.days[defaultSelectedIndex]?.workout;
+  const todayDay = currentSplit.days[defaultSelectedIndex];
   const selectedDay = currentSplit.days[selectedDayIndex];
   const isManualMode = currentSplit.planMode === 'manual';
 
@@ -213,20 +215,41 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               Manual Mode Active
             </button>
           )}
-          <button
-            id="btn-workouts-start-today"
-            type="button"
-            disabled={Boolean(currentSplit.days[defaultSelectedIndex]?.skipped) || !todayWorkout}
-            onClick={() => todayWorkout && onStartWorkout(todayWorkout, defaultSelectedIndex)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all hover:scale-105 ${
-              currentSplit.days[defaultSelectedIndex]?.skipped || !todayWorkout
-                ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
-                : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
-            }`}
-          >
-            <Play className="w-4 h-4 fill-current" />
-            {currentSplit.days[defaultSelectedIndex]?.skipped ? "Today's Session Skipped" : "Start Today's Session"}
-          </button>
+          
+          {todayDay?.completed ? (
+            <button
+              disabled
+              type="button"
+              className="px-5 py-2.5 rounded-xl bg-[#45D483]/15 border border-[#45D483]/40 text-[#45D483] text-xs font-black flex items-center gap-2 cursor-default"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Today's Session Completed
+            </button>
+          ) : todayDay?.skipped ? (
+            <button
+              type="button"
+              onClick={() => openSkipDialog(todayDay.dayName, true)}
+              className="px-5 py-2.5 rounded-xl bg-[#FF5C5C]/15 border border-[#FF5C5C]/40 text-[#FF8E8E] text-xs font-black flex items-center gap-2 transition-all hover:bg-[#FF5C5C]/25"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Today's Session Skipped (Resume)
+            </button>
+          ) : (
+            <button
+              id="btn-workouts-start-today"
+              type="button"
+              disabled={!todayWorkout}
+              onClick={() => todayWorkout && onStartWorkout(todayWorkout, defaultSelectedIndex)}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(184,243,74,0.3)] transition-all hover:scale-105 ${
+                !todayWorkout
+                  ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
+                  : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
+              }`}
+            >
+              <Play className="w-4 h-4 fill-current" />
+              Start Today's Session
+            </button>
+          )}
         </div>
       </div>
 
@@ -256,7 +279,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                     : isRest
                     ? 'bg-[#0B0D0F]/40 border-[#252B30]/60 opacity-70 hover:opacity-100'
                     : 'bg-[#181D22]/60 border-[#252B30] hover:border-[#9AA3A0]/40'
-                } ${dayItem.skipped ? 'opacity-85 border-[#FF5C5C]/50' : ''}`}
+                } ${dayItem.completed ? 'border-[#45D483]/50' : dayItem.skipped ? 'opacity-85 border-[#FF5C5C]/50' : ''}`}
               >
                 <div className="flex items-center justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5">
@@ -294,7 +317,13 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   {formatDayDate(dayItem.dayName ?? dayItem.day ?? 'Mon')}
                 </div>
 
-                {dayItem.skipped ? (
+                {dayItem.completed ? (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#45D483] flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Completed
+                    </span>
+                  </div>
+                ) : dayItem.skipped ? (
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold text-[#FF8E8E]">Skipped</span>
                     <button
@@ -352,11 +381,15 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#B8F34A]/15 text-[#B8F34A]">
                     {currentSplit.days[selectedDayIndex].workout?.durationMinutes} min
                   </span>
-                  {currentSplit.days[selectedDayIndex].skipped && (
+                  {currentSplit.days[selectedDayIndex].completed ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#45D483]/15 text-[#45D483] border border-[#45D483]/30">
+                      Completed
+                    </span>
+                  ) : currentSplit.days[selectedDayIndex].skipped ? (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FF5C5C]/15 text-[#FF8E8E] border border-[#FF5C5C]/30">
                       Skipped
                     </span>
-                  )}
+                  ) : null}
                   {currentSplit.days[selectedDayIndex].intensityLevel && (
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
@@ -379,36 +412,45 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {!selectedDay?.isRestDay && (
-                  <button
-                    type="button"
-                    onClick={() => openSkipDialog(String(selectedDay?.dayName || currentSplit.days[selectedDayIndex].dayName), Boolean(selectedDay?.skipped))}
-                    className={`px-3 py-2 rounded-xl border text-xs font-bold ${
-                      selectedDay?.skipped
-                        ? 'border-[#B8F34A]/35 bg-[#B8F34A]/10 text-[#B8F34A]'
-                        : 'border-[#FF5C5C]/35 bg-[#FF5C5C]/10 text-[#FF8E8E]'
-                    }`}
-                  >
-                    {selectedDay?.skipped ? 'Resume Day' : 'Skip Day'}
-                  </button>
+                {selectedDay?.completed ? (
+                  <div className="px-4 py-2 rounded-xl bg-[#45D483]/15 border border-[#45D483]/40 text-[#45D483] text-xs font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Session Completed
+                  </div>
+                ) : (
+                  <>
+                    {!selectedDay?.isRestDay && (
+                      <button
+                        type="button"
+                        onClick={() => openSkipDialog(String(selectedDay?.dayName || currentSplit.days[selectedDayIndex].dayName), Boolean(selectedDay?.skipped))}
+                        className={`px-3 py-2 rounded-xl border text-xs font-bold ${
+                          selectedDay?.skipped
+                            ? 'border-[#B8F34A]/35 bg-[#B8F34A]/10 text-[#B8F34A]'
+                            : 'border-[#FF5C5C]/35 bg-[#FF5C5C]/10 text-[#FF8E8E]'
+                        }`}
+                      >
+                        {selectedDay?.skipped ? 'Resume Day' : 'Skip Day'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={Boolean(selectedDay?.skipped) || selectedDay?.isRestDay}
+                      onClick={() =>
+                        currentSplit.days[selectedDayIndex].workout &&
+                        !selectedDay?.skipped &&
+                        onStartWorkout(currentSplit.days[selectedDayIndex].workout!, selectedDayIndex)
+                      }
+                      className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${
+                        selectedDay?.skipped || selectedDay?.isRestDay
+                          ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
+                          : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
+                      }`}
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      {selectedDay?.skipped ? 'Day Skipped' : 'Launch This Session'}
+                    </button>
+                  </>
                 )}
-                <button
-                  type="button"
-                  disabled={Boolean(selectedDay?.skipped) || selectedDay?.isRestDay}
-                  onClick={() =>
-                    currentSplit.days[selectedDayIndex].workout &&
-                    !selectedDay?.skipped &&
-                    onStartWorkout(currentSplit.days[selectedDayIndex].workout!, selectedDayIndex)
-                  }
-                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm ${
-                    selectedDay?.skipped || selectedDay?.isRestDay
-                      ? 'bg-[#181D22] border border-[#252B30] text-[#9AA3A0] cursor-not-allowed opacity-60'
-                      : 'bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68]'
-                  }`}
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  {selectedDay?.skipped ? 'Day Skipped' : 'Launch This Session'}
-                </button>
               </div>
             </div>
 
@@ -417,13 +459,15 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-[#9AA3A0]">
                 Day Movements Sequence ({currentSplit.days[selectedDayIndex].workout?.exercises.length} Exercises)
               </span>
-              <button
-                type="button"
-                onClick={() => setAddExercisePlanOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Exercise
-              </button>
+              {!selectedDay?.completed && !selectedDay?.isRestDay && (
+                <button
+                  type="button"
+                  onClick={() => setAddExercisePlanOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-[#5DA9FF]/15 border border-[#5DA9FF]/40 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F] font-bold text-xs flex items-center gap-1 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Exercise
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -544,26 +588,28 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                         </a>
                       )}
 
-                      <button
-                        type="button"
-                        disabled={isExLocked}
-                        onClick={() =>
-                          setSwapTarget({
-                            exerciseId: String(ex.exerciseId || ex.exerciseName),
-                            exerciseName: ex.exerciseName,
-                            targetMuscle: ex.targetMuscle || 'General',
-                            equipment: ex.equipment || 'body weight',
-                          })
-                        }
-                        className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
-                          isExLocked
-                            ? 'bg-[#181D22] border-[#252B30] text-[#9AA3A0]/40 cursor-not-allowed'
-                            : 'bg-[#5DA9FF]/10 border-[#5DA9FF]/30 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F]'
-                        }`}
-                        title={isExLocked ? 'Unlock exercise first to swap' : 'Swap exercise with AI'}
-                      >
-                        <RefreshCw className="w-3 h-3" /> Swap
-                      </button>
+                      {!selectedDay?.completed && (
+                        <button
+                          type="button"
+                          disabled={isExLocked}
+                          onClick={() =>
+                            setSwapTarget({
+                              exerciseId: String(ex.exerciseId || ex.exerciseName),
+                              exerciseName: ex.exerciseName,
+                              targetMuscle: ex.targetMuscle || 'General',
+                              equipment: ex.equipment || 'body weight',
+                            })
+                          }
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
+                            isExLocked
+                              ? 'bg-[#181D22] border-[#252B30] text-[#9AA3A0]/40 cursor-not-allowed'
+                              : 'bg-[#5DA9FF]/10 border-[#5DA9FF]/30 text-[#5DA9FF] hover:bg-[#5DA9FF] hover:text-[#0B0D0F]'
+                          }`}
+                          title={isExLocked ? 'Unlock exercise first to swap' : 'Swap exercise with AI'}
+                        >
+                          <RefreshCw className="w-3 h-3" /> Swap
+                        </button>
+                      )}
 
                       <button
                         type="button"

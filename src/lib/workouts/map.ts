@@ -32,6 +32,8 @@ export function toSplitDto(plan: any): WorkoutSplitSchedule {
       isRestDay: Boolean(day.isRestDay),
       skipped: Boolean(day.skipped),
       skipReason: day.skipReason || "",
+      completed: Boolean(day.completed),
+      completedAt: day.completedAt ? new Date(day.completedAt).toISOString() : undefined,
       locked: Boolean(day.locked),
       workout: day.isRestDay || !day.workout
         ? undefined

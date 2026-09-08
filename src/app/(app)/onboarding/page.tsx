@@ -19,6 +19,7 @@ export default function OnboardingPage() {
 
   return (
     <OnboardingFlow
+      key={name || "onboarding"}
       initialProfile={{ name }}
       onCompleteOnboarding={() => {
         router.push("/dashboard");
