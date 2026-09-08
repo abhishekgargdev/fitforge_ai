@@ -109,6 +109,19 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   const selectedDay = currentSplit.days[selectedDayIndex];
   const isManualMode = currentSplit.planMode === 'manual';
 
+  const isDayCompleted = React.useCallback(
+    (day: any) => {
+      if (!day) return false;
+      if (day.completed) return true;
+      if (!day.workout?.name) return false;
+      const dayNameNormalized = day.workout.name.trim().toLowerCase();
+      return recentHistory.some(
+        (h) => h.title.trim().toLowerCase() === dayNameNormalized
+      );
+    },
+    [recentHistory]
+  );
+
   const handleToggleLock = async (dayName: string, exerciseId?: string, currentLocked?: boolean) => {
     if (!currentSplit.id) return;
     setLockingDay(dayName);
@@ -216,7 +229,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             </button>
           )}
           
-          {todayDay?.completed ? (
+          {isDayCompleted(todayDay) ? (
             <button
               disabled
               type="button"
@@ -268,6 +281,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
             const isSelected = selectedDayIndex === idx;
             const isRest = dayItem.isRestDay;
             const isDayLocked = Boolean(dayItem.locked);
+            const isCompleted = isDayCompleted(dayItem);
 
             return (
               <div
@@ -279,7 +293,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                     : isRest
                     ? 'bg-[#0B0D0F]/40 border-[#252B30]/60 opacity-70 hover:opacity-100'
                     : 'bg-[#181D22]/60 border-[#252B30] hover:border-[#9AA3A0]/40'
-                } ${dayItem.completed ? 'border-[#45D483]/50' : dayItem.skipped ? 'opacity-85 border-[#FF5C5C]/50' : ''}`}
+                } ${isCompleted ? 'border-[#45D483]/50' : dayItem.skipped ? 'opacity-85 border-[#FF5C5C]/50' : ''}`}
               >
                 <div className="flex items-center justify-between text-xs mb-1">
                   <div className="flex items-center gap-1.5">
@@ -317,7 +331,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   {formatDayDate(dayItem.dayName ?? dayItem.day ?? 'Mon')}
                 </div>
 
-                {dayItem.completed ? (
+                {isCompleted ? (
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-[10px] font-bold text-[#45D483] flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Completed
@@ -381,7 +395,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#B8F34A]/15 text-[#B8F34A]">
                     {currentSplit.days[selectedDayIndex].workout?.durationMinutes} min
                   </span>
-                  {currentSplit.days[selectedDayIndex].completed ? (
+                  {isDayCompleted(currentSplit.days[selectedDayIndex]) ? (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#45D483]/15 text-[#45D483] border border-[#45D483]/30">
                       Completed
                     </span>
@@ -412,7 +426,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedDay?.completed ? (
+                {isDayCompleted(selectedDay) ? (
                   <div className="px-4 py-2 rounded-xl bg-[#45D483]/15 border border-[#45D483]/40 text-[#45D483] text-xs font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" />
                     Session Completed
@@ -459,7 +473,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-[#9AA3A0]">
                 Day Movements Sequence ({currentSplit.days[selectedDayIndex].workout?.exercises.length} Exercises)
               </span>
-              {!selectedDay?.completed && !selectedDay?.isRestDay && (
+              {!isDayCompleted(selectedDay) && !selectedDay?.isRestDay && (
                 <button
                   type="button"
                   onClick={() => setAddExercisePlanOpen(true)}
@@ -510,26 +524,28 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                           {exIdx + 1}
                         </span>
                         {/* Reorder Up / Down buttons */}
-                        <div className="flex flex-col gap-0.5 mt-1">
-                          <button
-                            type="button"
-                            disabled={exIdx === 0}
-                            onClick={() => handleMoveExercise('up')}
-                            className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
-                            title="Move Up"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            disabled={exIdx === totalExCount - 1}
-                            onClick={() => handleMoveExercise('down')}
-                            className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
-                            title="Move Down"
-                          >
-                            ▼
-                          </button>
-                        </div>
+                        {!isDayCompleted(selectedDay) && (
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <button
+                              type="button"
+                              disabled={exIdx === 0}
+                              onClick={() => handleMoveExercise('up')}
+                              className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
+                              title="Move Up"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              disabled={exIdx === totalExCount - 1}
+                              onClick={() => handleMoveExercise('down')}
+                              className="p-0.5 rounded text-[#9AA3A0] hover:text-white disabled:opacity-20 text-[9px]"
+                              title="Move Down"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -588,7 +604,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                         </a>
                       )}
 
-                      {!selectedDay?.completed && (
+                      {!isDayCompleted(selectedDay) && (
                         <button
                           type="button"
                           disabled={isExLocked}
@@ -611,16 +627,18 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}
-                        className={`p-1.5 rounded hover:bg-white/10 transition-colors ${
-                          isExLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 hover:opacity-100'
-                        }`}
-                        title={isExLocked ? 'Exercise locked against AI changes' : 'Lock exercise'}
-                      >
-                        {isExLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      </button>
+                      {!isDayCompleted(selectedDay) && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLock(currentDayName, ex.exerciseId, isExLocked)}
+                          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${
+                            isExLocked ? 'text-[#F5B942]' : 'text-[#9AA3A0] opacity-40 hover:opacity-100'
+                          }`}
+                          title={isExLocked ? 'Exercise locked against AI changes' : 'Lock exercise'}
+                        >
+                          {isExLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

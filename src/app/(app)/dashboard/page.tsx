@@ -40,6 +40,7 @@ type DashboardPayload = {
     dayIndex: number;
     isRestDay: boolean;
     isSkipped: boolean;
+    isCompleted?: boolean;
     skipReason: string;
     focus: string;
     todayWorkout: WorkoutTemplate;
@@ -98,6 +99,7 @@ export default function DashboardPage() {
         todayWorkout={data.workout.todayWorkout || emptyWorkout}
         isRestDay={data.workout.isRestDay}
         isSkipped={data.workout.isSkipped}
+        isCompleted={data.workout.isCompleted}
         skipReason={data.workout.skipReason}
         workoutFocus={data.workout.focus}
         chartSeries={data.progress.series}
