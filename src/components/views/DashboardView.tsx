@@ -33,6 +33,7 @@ import {
   Zap,
   Trophy,
   Footprints,
+  CheckCircle2,
 } from 'lucide-react';
 import { DailyActivityModal } from '../modals/DailyActivityModal';
 
@@ -60,6 +61,7 @@ interface DashboardViewProps {
   todayWorkout: WorkoutTemplate;
   isRestDay?: boolean;
   isSkipped?: boolean;
+  isCompleted?: boolean;
   skipReason?: string;
   workoutFocus?: string;
   chartSeries: Array<{ label: string; value: number }>;
@@ -83,6 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   todayWorkout,
   isRestDay,
   isSkipped,
+  isCompleted,
   skipReason,
   workoutFocus,
   chartSeries,
@@ -392,14 +395,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <span
                 className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${
-                  isSkipped
+                  isCompleted
+                    ? 'bg-[#45D483]/10 text-[#45D483] border-[#45D483]/30'
+                    : isSkipped
                     ? 'bg-[#FF5C5C]/10 text-[#FF8E8E] border-[#FF5C5C]/30'
                     : isRestDay
-                      ? 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
-                      : 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
+                    ? 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
+                    : 'bg-[#B8F34A]/10 text-[#B8F34A] border-[#B8F34A]/20'
                 }`}
               >
-                {isSkipped ? 'SKIPPED' : isRestDay ? 'REST' : todayWorkout.category}
+                {isCompleted ? 'COMPLETED' : isSkipped ? 'SKIPPED' : isRestDay ? 'REST' : todayWorkout.category}
               </span>
             </div>
 
@@ -443,7 +448,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               All Workouts
             </button>
-            {isSkipped ? (
+            {isCompleted ? (
+              <button
+                id="btn-dash-completed-workout"
+                disabled
+                className="flex-1 bg-[#45D483]/15 border border-[#45D483]/40 text-[#45D483] py-3 rounded-2xl font-bold tracking-tight text-xs uppercase flex items-center justify-center gap-2 cursor-default"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                WORKOUT COMPLETED
+              </button>
+            ) : isSkipped ? (
               <button
                 id="btn-dash-skipped-workout"
                 disabled
@@ -597,8 +611,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="flex justify-between mt-2 text-[10px] text-[#9AA3A0] uppercase font-bold tracking-widest px-1">
-              {chartPoints.slice(-5).map((point) => (
-                <span key={point.label}>{point.label}</span>
+              {chartPoints.slice(-5).map((point, idx) => (
+                <span key={`${point.label}-${idx}`}>{point.label}</span>
               ))}
             </div>
           </div>

@@ -121,12 +121,19 @@ export async function POST(
     }
     await workout.save();
 
-    if (workout.workoutPlanId) {
-      const { WorkoutPlanModel } = await import("@/models/WorkoutPlan");
-      const plan = await WorkoutPlanModel.findOne({ _id: workout.workoutPlanId, userId: session.user._id });
-      if (plan && plan.days && plan.days[workout.dayIndex]) {
-        plan.days[workout.dayIndex].completed = true;
-        plan.days[workout.dayIndex].completedAt = new Date();
+    const { WorkoutPlanModel } = await import("@/models/WorkoutPlan");
+    const plan = workout.workoutPlanId
+      ? await WorkoutPlanModel.findOne({ _id: workout.workoutPlanId, userId: session.user._id })
+      : await WorkoutPlanModel.findOne({ userId: session.user._id, isActive: true });
+
+    if (plan && plan.days) {
+      let targetIndex = workout.dayIndex;
+      if (targetIndex === undefined || targetIndex < 0 || targetIndex >= plan.days.length) {
+        targetIndex = plan.days.findIndex((d: any) => d.workout?.name === workout.workoutName);
+      }
+      if (targetIndex >= 0 && plan.days[targetIndex]) {
+        plan.days[targetIndex].completed = true;
+        plan.days[targetIndex].completedAt = new Date();
         plan.markModified("days");
         await plan.save();
       }

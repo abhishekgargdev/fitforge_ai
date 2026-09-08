@@ -133,6 +133,7 @@ export async function getDashboardData(userId: any, range: ProgressRange = "3m")
       dayIndex,
       isRestDay,
       isSkipped,
+      isCompleted: Boolean(todayDay?.completed || recentSessions.some(s => s.workoutName === todayWorkout.name)),
       skipReason: todayDay?.skipReason || "",
       focus: todayDay?.focus || "",
       todayWorkout,
