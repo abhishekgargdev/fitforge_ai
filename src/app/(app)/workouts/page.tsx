@@ -26,13 +26,15 @@ export default function WorkoutsPage() {
   const [history, setHistory] = useState<
     Array<{ id: string; title: string; date: string; duration: string; volume: string; sets: number }>
   >([]);
+  const [activeSession, setActiveSession] = useState<{ id: string; workoutName: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [planRes, recordsRes, historyRes] = await Promise.all([
+      const [planRes, recordsRes, historyRes, activeRes] = await Promise.all([
         fetch("/api/workout-plans"),
         fetch("/api/workouts/records"),
         fetch("/api/workouts?limit=8"),
+        fetch("/api/workouts?status=in_progress&limit=1"),
       ]);
 
       const planJson = await planRes.json();
@@ -52,6 +54,9 @@ export default function WorkoutsPage() {
       );
 
       const historyJson = await historyRes.json();
+      const activeJson = await activeRes.json();
+      const active = activeJson.data?.items?.[0];
+      setActiveSession(active ? { id: active.id, workoutName: active.workoutName } : null);
       setHistory(
         (historyJson.data?.items || [])
           .filter((item: { totalSets?: number }) => (item.totalSets || 0) >= 0)
@@ -77,6 +82,7 @@ export default function WorkoutsPage() {
       setSplit(emptySplit);
       setRecords([]);
       setHistory([]);
+      setActiveSession(null);
     }
   }, []);
 
@@ -105,6 +111,8 @@ export default function WorkoutsPage() {
           await load();
           router.refresh();
         }}
+        activeSession={activeSession}
+        onContinueWorkout={() => activeSession && router.push(`/workouts/active/${activeSession.id}`)}
         onNavigate={(tab) => {
           if (tab === "exercises") router.push("/exercises");
           else router.push("/dashboard");

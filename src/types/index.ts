@@ -199,6 +199,7 @@ export interface BodyCompositionDetails {
 
 export type WorkoutPhase = "warmup" | "cardio" | "bodyweight" | "main" | "cooldown";
 export type TrackingType = "reps" | "timer";
+export type ActiveExerciseStatus = "not_started" | "in_progress" | "paused" | "completed" | "skipped";
 
 export interface Exercise {
   id: string;
@@ -259,6 +260,9 @@ export interface ActiveWorkoutExercise {
   targetDurationSeconds?: number;
   isStretchFallback?: boolean;
   stretchInstructions?: string[];
+  status?: ActiveExerciseStatus;
+  caloriesBurned?: number;
+  distanceKm?: number;
 }
 
 export interface WorkoutExerciseItem {
@@ -346,6 +350,7 @@ export interface CompletedWorkoutSummary {
   personalRecords: string[];
   volumeChangeVsPreviousPercentage: number;
   aiSummary: string;
+  status?: "in_progress" | "completed";
 }
 
 export type WorkoutSession = CompletedWorkoutSummary;

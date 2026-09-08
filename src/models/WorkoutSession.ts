@@ -29,6 +29,13 @@ const sessionExerciseSchema = new Schema(
     aiNote: { type: String, default: "" },
     skipped: { type: Boolean, default: false },
     skippedReason: { type: String, default: "" },
+    status: {
+      type: String,
+      enum: ["not_started", "in_progress", "paused", "completed", "skipped"],
+      default: "not_started",
+    },
+    caloriesBurned: { type: Number, default: 0 },
+    distanceKm: { type: Number, default: 0 },
     phase: {
       type: String,
       enum: ["warmup", "cardio", "bodyweight", "main", "cooldown"],
@@ -69,6 +76,7 @@ const workoutSessionSchema = new Schema(
     startedAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
     durationMinutes: { type: Number, default: 0 },
+    activeExerciseIndex: { type: Number, default: 0 },
     exercises: { type: [sessionExerciseSchema], default: [] },
     swapHistory: { type: [swapHistorySchema], default: [] },
     totalVolumeKg: { type: Number, default: 0 },

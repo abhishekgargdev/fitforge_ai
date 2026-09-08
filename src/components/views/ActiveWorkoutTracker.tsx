@@ -39,6 +39,7 @@ interface ActiveWorkoutTrackerProps {
   workout: WorkoutTemplate;
   loggedExercises?: ActiveWorkoutExercise[];
   sessionId: string;
+  initialExerciseIndex?: number;
   onFinishWorkout: (summary: CompletedWorkoutSummary) => void;
   onCancel: () => void;
 }
@@ -67,6 +68,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   workout,
   loggedExercises,
   sessionId,
+  initialExerciseIndex = 0,
   onFinishWorkout,
   onCancel,
 }) => {
@@ -94,7 +96,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
     });
   });
 
-  const [currentExIndex, setCurrentExIndex] = useState(0);
+  const [currentExIndex, setCurrentExIndex] = useState(() => Math.min(Math.max(0, initialExerciseIndex), Math.max(0, exercises.length - 1)));
   const [sessionStartTime] = useState(Date.now());
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showCheckin, setShowCheckin] = useState(true);
@@ -105,7 +107,8 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
   const [startWeightKg, setStartWeightKg] = useState<number | undefined>(undefined);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
 
-  const persistPayload = (endWeightKg?: number) => ({
+  const persistPayload = (endWeightKg?: number, exerciseIndex = currentExIndex) => ({
+    activeExerciseIndex: exerciseIndex,
     durationMinutes: Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000)),
     ...(endWeightKg ? { endWeightKg } : {}),
     exercises: exercises.map((item) => ({
@@ -114,12 +117,44 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       aiNote: item.aiNote,
       skipped: item.skipped ?? false,
       skippedReason: item.skippedReason ?? "",
+      status: item.status ?? (item.skipped ? 'skipped' : 'not_started'),
+      caloriesBurned: item.caloriesBurned ?? 0,
+      distanceKm: item.distanceKm ?? 0,
       sets: item.sets,
     })),
   });
 
   const currentExerciseData = exercises[currentExIndex];
   const currentEx = currentExerciseData.exercise;
+
+  // Keep the session resumable even when the user leaves this page between sets.
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fetch(`/api/workouts/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(persistPayload()),
+      }).catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [exercises, currentExIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setExerciseStatus = (status: ActiveWorkoutExercise['status']) => {
+    setExercises((prev) => prev.map((item, idx) =>
+      idx === currentExIndex ? { ...item, status, skipped: status === 'skipped' } : item
+    ));
+  };
+
+  const goToExercise = (index: number) => {
+    const nextIndex = Math.min(Math.max(0, index), exercises.length - 1);
+    setCurrentExIndex(nextIndex);
+    // Save the cursor immediately so leaving the tab right after navigation still resumes here.
+    fetch(`/api/workouts/${sessionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(persistPayload(undefined, nextIndex)),
+    }).catch(() => undefined);
+  };
 
   // Toggle set completed
   const handleToggleSet = (setIndex: number) => {
@@ -130,6 +165,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
       const wasCompleted = sets[setIndex].completed;
       sets[setIndex] = { ...sets[setIndex], completed: !wasCompleted };
       ex.sets = sets;
+      ex.status = sets.every((set) => set.completed)
+        ? 'completed'
+        : (ex.status === 'not_started' || !ex.status ? 'in_progress' : ex.status);
       updated[currentExIndex] = ex;
 
       // Auto show rest timer on completing a set
@@ -185,7 +223,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
 
     setExercises((prev) => {
       const updated = [...prev];
-      const ex = { ...updated[currentExIndex], skipped: true, skippedReason: reason };
+      const ex = { ...updated[currentExIndex], skipped: true, skippedReason: reason, status: 'skipped' as const };
       updated[currentExIndex] = ex;
       return updated;
     });
@@ -198,6 +236,9 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
         aiNote: item.aiNote,
         skipped: idx === currentExIndex ? true : item.skipped ?? false,
         skippedReason: idx === currentExIndex ? reason : item.skippedReason ?? '',
+        status: idx === currentExIndex ? 'skipped' : item.status ?? 'not_started',
+        caloriesBurned: item.caloriesBurned ?? 0,
+        distanceKm: item.distanceKm ?? 0,
         sets: item.sets,
       })),
     };
@@ -374,6 +415,48 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               </div>
             </div>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
+                currentExerciseData.status === 'completed' ? 'border-[#45D483]/40 bg-[#45D483]/10 text-[#45D483]' :
+                currentExerciseData.status === 'paused' ? 'border-[#F5B942]/40 bg-[#F5B942]/10 text-[#F5B942]' :
+                currentExerciseData.status === 'skipped' ? 'border-[#FF5C5C]/40 bg-[#FF5C5C]/10 text-[#FF8E8E]' :
+                currentExerciseData.status === 'in_progress' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' :
+                'border-[#252B30] bg-[#181D22] text-[#9AA3A0]'
+              }`}>
+                {(currentExerciseData.status || 'not_started').replace('_', ' ')}
+              </span>
+              {currentExerciseData.status === 'not_started' && (
+                <button type="button" onClick={() => setExerciseStatus('in_progress')} className="rounded-lg bg-[#B8F34A] px-3 py-1.5 text-xs font-black text-[#0B0D0F]">
+                  <Play className="mr-1 inline h-3.5 w-3.5 fill-current" /> Start
+                </button>
+              )}
+              {currentExerciseData.status === 'in_progress' && (
+                <button type="button" onClick={() => setExerciseStatus('paused')} className="rounded-lg border border-[#F5B942]/40 bg-[#F5B942]/10 px-3 py-1.5 text-xs font-bold text-[#F5B942]">Hold</button>
+              )}
+              {currentExerciseData.status === 'paused' && (
+                <button type="button" onClick={() => setExerciseStatus('in_progress')} className="rounded-lg bg-[#B8F34A] px-3 py-1.5 text-xs font-black text-[#0B0D0F]">
+                  <Play className="mr-1 inline h-3.5 w-3.5 fill-current" /> Continue
+                </button>
+              )}
+              {currentExerciseData.status !== 'completed' && currentExerciseData.status !== 'skipped' && (
+                <button type="button" onClick={() => setExerciseStatus('completed')} className="rounded-lg border border-[#45D483]/40 bg-[#45D483]/10 px-3 py-1.5 text-xs font-bold text-[#45D483]">Mark completed</button>
+              )}
+            </div>
+
+            {currentExerciseData.skipped && (
+              <div className="mt-3 rounded-xl border border-[#FF5C5C]/35 bg-[#FF5C5C]/10 p-3 text-xs text-[#FFB2B2]">
+                <strong>Skipped:</strong> {currentExerciseData.skippedReason || 'No reason recorded.'}
+              </div>
+            )}
+
+            {(currentEx.instructions.length > 0 || currentEx.tips.length > 0) && (
+              <div className="mt-3 rounded-xl border border-[#252B30] bg-[#0B0D0F]/60 p-3 text-xs">
+                <p className="font-bold text-white">Exercise information</p>
+                {currentEx.instructions.length > 0 && <p className="mt-1 text-[#9AA3A0]">{currentEx.instructions[0]}</p>}
+                {currentEx.tips.length > 0 && <p className="mt-1 text-[#B8F34A]">Tip: {currentEx.tips[0]}</p>}
+              </div>
+            )}
+
             {/* AI Real-time Form / Execution Note */}
             {currentExerciseData.aiNote && (
               <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-[#181D22] to-[#1A221E] border border-[#B8F34A]/30 flex items-start gap-2.5 text-xs text-[#F5F7F2]">
@@ -468,6 +551,16 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
                       </div>
                     );
                   })}
+                  {currentExerciseData.sets.some((set) => set.completed) && (
+                    <div className="grid grid-cols-1 gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3 sm:grid-cols-2">
+                      <label className="text-xs font-bold text-[#9AA3A0]">Calories burned (optional)
+                        <input type="number" min="0" value={currentExerciseData.caloriesBurned ?? ''} onChange={(e) => setExercises((prev) => prev.map((item, idx) => idx === currentExIndex ? { ...item, caloriesBurned: Number(e.target.value) || 0 } : item))} className="mt-1.5 w-full rounded-lg border border-[#252B30] bg-[#0B0D0F] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400" placeholder="e.g. 120" />
+                      </label>
+                      <label className="text-xs font-bold text-[#9AA3A0]">Distance (km, optional)
+                        <input type="number" min="0" step="0.01" value={currentExerciseData.distanceKm ?? ''} onChange={(e) => setExercises((prev) => prev.map((item, idx) => idx === currentExIndex ? { ...item, distanceKm: Number(e.target.value) || 0 } : item))} className="mt-1.5 w-full rounded-lg border border-[#252B30] bg-[#0B0D0F] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400" placeholder="e.g. 2.5" />
+                      </label>
+                    </div>
+                  )}
                 </div>
               ) : (
                 // Reps / Weight Mode UI
@@ -565,7 +658,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               id="btn-prev-exercise"
               type="button"
               disabled={currentExIndex === 0}
-              onClick={() => setCurrentExIndex((prev) => Math.max(0, prev - 1))}
+              onClick={() => goToExercise(currentExIndex - 1)}
               className="px-4 py-2.5 rounded-xl bg-[#181D22] border border-[#252B30] text-xs font-bold text-[#9AA3A0] hover:text-white disabled:opacity-40 flex items-center gap-1.5"
             >
               <ChevronLeft className="w-4 h-4" /> Previous Exercise
@@ -575,7 +668,7 @@ export const ActiveWorkoutTracker: React.FC<ActiveWorkoutTrackerProps> = ({
               <button
                 id="btn-next-exercise"
                 type="button"
-                onClick={() => setCurrentExIndex((prev) => Math.min(exercises.length - 1, prev + 1))}
+                onClick={() => goToExercise(currentExIndex + 1)}
                 className="px-5 py-2.5 rounded-xl bg-[#B8F34A] text-[#0B0D0F] hover:bg-[#C8FF68] text-xs font-black flex items-center gap-1.5 shadow-sm"
               >
                 Next Exercise <ChevronRight className="w-4 h-4" />

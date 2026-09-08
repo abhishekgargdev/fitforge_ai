@@ -21,6 +21,7 @@ export const startWorkoutSchema = z.object({
 });
 
 export const updateSessionSchema = z.object({
+  activeExerciseIndex: z.number().int().min(0).optional(),
   exercises: z.array(
     z.object({
       exerciseId: z.string().min(1),
@@ -28,11 +29,16 @@ export const updateSessionSchema = z.object({
       aiNote: z.string().optional(),
       skipped: z.boolean().optional(),
       skippedReason: z.string().optional(),
+      status: z.enum(["not_started", "in_progress", "paused", "completed", "skipped"]).optional(),
+      caloriesBurned: z.number().min(0).max(10000).optional(),
+      distanceKm: z.number().min(0).max(1000).optional(),
       sets: z.array(
         z.object({
           setNumber: z.number().int().min(1),
           targetWeightKg: z.number().min(0),
           targetReps: z.number().int().min(0),
+          targetDurationSeconds: z.number().int().min(0).optional(),
+          actualDurationSeconds: z.number().int().min(0).optional(),
           actualWeightKg: z.number().min(0),
           actualReps: z.number().int().min(0),
           rpe: z.number().min(1).max(10).optional(),

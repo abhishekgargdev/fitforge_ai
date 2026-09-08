@@ -64,9 +64,13 @@ export async function PUT(
         aiNote: incoming.aiNote ?? ex.aiNote,
         skipped: incoming.skipped ?? ex.skipped ?? false,
         skippedReason: incoming.skippedReason ?? ex.skippedReason ?? "",
+        status: incoming.status ?? ex.status ?? "not_started",
+        caloriesBurned: incoming.caloriesBurned ?? ex.caloriesBurned ?? 0,
+        distanceKm: incoming.distanceKm ?? ex.distanceKm ?? 0,
         sets: incoming.sets,
       };
     });
+    workout.activeExerciseIndex = parsed.data.activeExerciseIndex ?? workout.activeExerciseIndex ?? 0;
     workout.markModified("exercises");
     await workout.save();
     return ok({

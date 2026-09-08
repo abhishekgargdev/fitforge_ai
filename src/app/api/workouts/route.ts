@@ -22,7 +22,9 @@ export async function GET(request: Request) {
     }
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
+    const status = url.searchParams.get("status");
     const filter: Record<string, unknown> = { userId: session.user._id };
+    if (status === "in_progress" || status === "completed") filter.status = status;
     if (from || to) {
       filter.startedAt = {
         ...(from ? { $gte: new Date(from) } : {}),
@@ -67,6 +69,25 @@ export async function POST(request: Request) {
     const day = plan.days[parsed.data.dayIndex];
     if (!day?.workout || day.isRestDay) {
       return fail("That day is a rest day.", 400, "REST_DAY");
+    }
+
+    // Launching the same day again resumes its active session instead of creating a duplicate.
+    const existing = await WorkoutSessionModel.findOne({
+      userId: session.user._id,
+      workoutPlanId: plan._id,
+      dayIndex: parsed.data.dayIndex,
+      status: "in_progress",
+    }).sort({ startedAt: -1 });
+    if (existing) {
+      return ok({
+        session: {
+          id: String(existing._id),
+          status: existing.status,
+          workout: sessionToTemplate(existing),
+          exercises: existing.exercises,
+          activeExerciseIndex: existing.activeExerciseIndex || 0,
+        },
+      });
     }
 
     const lastWeights = new Map<string, number>();
@@ -116,6 +137,9 @@ export async function POST(request: Request) {
           targetDurationSeconds: durationSec,
           isStretchFallback: Boolean(ex.isStretchFallback),
           stretchInstructions: ex.stretchInstructions || [],
+          status: "not_started",
+          caloriesBurned: 0,
+          distanceKm: 0,
           sets: Array.from({ length: ex.sets }, (_, idx) => ({
             setNumber: idx + 1,
             targetWeightKg: trackingType === "timer" ? 0 : weight,
@@ -149,6 +173,7 @@ export async function POST(request: Request) {
           status: created.status,
           workout: sessionToTemplate(created),
           exercises: created.exercises,
+          activeExerciseIndex: created.activeExerciseIndex || 0,
         },
       },
       201

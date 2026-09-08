@@ -11,6 +11,7 @@ export default function ActiveWorkoutPage() {
   const router = useRouter();
   const [workout, setWorkout] = useState<WorkoutTemplate | null>(null);
   const [logged, setLogged] = useState<ActiveWorkoutExercise[]>([]);
+  const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const [summary, setSummary] = useState<CompletedWorkoutSummary | null>(null);
   const [error, setError] = useState("");
 
@@ -33,6 +34,16 @@ export default function ActiveWorkoutPage() {
               tips?: string[];
               restSeconds: number;
               aiNote?: string;
+              skipped?: boolean;
+              skippedReason?: string;
+              status?: ActiveWorkoutExercise["status"];
+              caloriesBurned?: number;
+              distanceKm?: number;
+              phase?: ActiveWorkoutExercise["phase"];
+              trackingType?: ActiveWorkoutExercise["trackingType"];
+              targetDurationSeconds?: number;
+              isStretchFallback?: boolean;
+              stretchInstructions?: string[];
               sets: ActiveWorkoutExercise["sets"];
             }) => ({
               exercise: {
@@ -51,9 +62,20 @@ export default function ActiveWorkoutPage() {
               sets: ex.sets,
               restSeconds: ex.restSeconds,
               aiNote: ex.aiNote,
+              skipped: ex.skipped,
+              skippedReason: ex.skippedReason,
+              status: ex.status,
+              caloriesBurned: ex.caloriesBurned,
+              distanceKm: ex.distanceKm,
+              phase: ex.phase,
+              trackingType: ex.trackingType,
+              targetDurationSeconds: ex.targetDurationSeconds,
+              isStretchFallback: ex.isStretchFallback,
+              stretchInstructions: ex.stretchInstructions,
             })
           )
         );
+        setActiveExerciseIndex(json.data.session.activeExerciseIndex || 0);
         if (json.data.session.summary) setSummary(json.data.session.summary);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to load workout."));
@@ -79,6 +101,7 @@ export default function ActiveWorkoutPage() {
         workout={workout}
         loggedExercises={logged}
         sessionId={id}
+        initialExerciseIndex={activeExerciseIndex}
         onFinishWorkout={(done) => setSummary(done)}
         onCancel={() => router.push("/workouts")}
       />

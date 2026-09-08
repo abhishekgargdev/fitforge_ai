@@ -113,5 +113,6 @@ export function sessionToSummary(session: any): CompletedWorkoutSummary {
     personalRecords: session.personalRecords ?? [],
     volumeChangeVsPreviousPercentage: session.volumeChangeVsPreviousPercentage ?? 0,
     aiSummary: session.aiSummary || "Solid session. Keep progressive overload consistent next time.",
+    status: session.status,
   };
 }

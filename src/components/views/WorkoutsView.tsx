@@ -51,6 +51,8 @@ interface WorkoutsViewProps {
   onOpenAIPlanner: () => void;
   onNavigate: (tab: ActiveNavTab) => void;
   onRefreshSplit?: () => void;
+  activeSession?: { id: string; workoutName: string } | null;
+  onContinueWorkout?: () => void;
 }
 
 export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
@@ -61,6 +63,8 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
   onOpenAIPlanner,
   onNavigate,
   onRefreshSplit,
+  activeSession,
+  onContinueWorkout,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [lockingDay, setLockingDay] = useState<string | null>(null);
@@ -179,6 +183,16 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {activeSession && (
+            <button
+              id="btn-workouts-continue-session"
+              type="button"
+              onClick={onContinueWorkout}
+              className="px-5 py-2.5 rounded-xl bg-[#45D483] text-[#0B0D0F] hover:bg-[#5be698] text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(69,212,131,0.25)]"
+            >
+              <Play className="w-4 h-4 fill-current" /> Continue {activeSession.workoutName}
+            </button>
+          )}
           {!isManualMode ? (
             <button
               id="btn-workouts-ai-planner"
